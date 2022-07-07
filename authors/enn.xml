@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="../assets/xml/rss.xsl" media="all"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>enn-devblog (Posts by enn)</title><link>https://example.com/</link><description></description><atom:link href="https://example.com/authors/enn.xml" rel="self" type="application/rss+xml"></atom:link><language>en</language><copyright>Contents © 2022 &lt;a href="mailto:3547240@gmail.com"&gt;enn&lt;/a&gt; </copyright><lastBuildDate>Thu, 07 Jul 2022 19:24:11 GMT</lastBuildDate><generator>Nikola (getnikola.com)</generator><docs>http://blogs.law.harvard.edu/tech/rss</docs><item><title>Accudentally becoming a bootloader dev</title><link>https://example.com/posts/accidental-kernel.html</link><dc:creator>enn</dc:creator><description>&lt;p&gt;Write your post here.&lt;/p&gt;
+&lt;p&gt;Footnote references, like &lt;a class="footnote-reference brackets" href="https://example.com/posts/accidental-kernel.html#footnote-1" id="footnote-reference-1" role="doc-noteref"&gt;&lt;span class="fn-bracket"&gt;[&lt;/span&gt;5&lt;span class="fn-bracket"&gt;]&lt;/span&gt;&lt;/a&gt;.
+Note that footnotes may get
+rearranged, e.g., to the bottom of
+the "page".&lt;/p&gt;
+&lt;aside class="footnote brackets" id="footnote-1" role="note"&gt;
+&lt;span class="label"&gt;&lt;span class="fn-bracket"&gt;[&lt;/span&gt;&lt;a role="doc-backlink" href="https://example.com/posts/accidental-kernel.html#footnote-reference-1"&gt;5&lt;/a&gt;&lt;span class="fn-bracket"&gt;]&lt;/span&gt;&lt;/span&gt;
+&lt;p&gt;A numerical footnote. Note
+there's no colon after the &lt;code class="docutils literal"&gt;]&lt;/code&gt;.&lt;/p&gt;
+&lt;/aside&gt;</description><category>aarch64</category><category>armasm</category><category>asm</category><category>programming</category><guid>https://example.com/posts/accidental-kernel.html</guid><pubDate>Thu, 07 Jul 2022 19:10:56 GMT</pubDate></item></channel></rss>
