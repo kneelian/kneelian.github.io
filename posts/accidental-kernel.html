@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns# article: http://ogp.me/ns/article#
+" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accidentally becoming a bootloader dev | enn-devblog</title>
+<link href="../assets/css/all-nocdn.css" rel="stylesheet" type="text/css">
+<meta name="theme-color" content="#5670d4">
+<meta name="generator" content="Nikola (getnikola.com)">
+<link rel="canonical" href="https://example.com/posts/accidental-kernel.html">
+<!--[if lt IE 9]><script src="../assets/js/html5.js"></script><![endif]--><meta name="author" content="enn">
+<meta property="og:site_name" content="enn-devblog">
+<meta property="og:title" content="Accidentally becoming a bootloader dev">
+<meta property="og:url" content="https://example.com/posts/accidental-kernel.html">
+<meta property="og:description" content="And you know how it goes, one thing leads to another and you get
+caught up in the most fucked up of shit­ [1] known to programming
+man just because you weren't careful enough to know better. Over
+time">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2022-07-07T21:10:56+02:00">
+<meta property="article:tag" content="aarch64">
+<meta property="article:tag" content="armasm">
+<meta property="article:tag" content="asm">
+<meta property="article:tag" content="programming">
+<link rel="alternate" hreflang="ru" href="../ru/posts/hello-world.html">
+</head>
+<body>
+<a href="#content" class="sr-only sr-only-focusable">Skip to main content</a>
+
+<!-- Menubar -->
+
+<nav class="navbar navbar-expand-md static-top mb-4
+navbar-dark
+bg-dark
+"><div class="container">
+<!-- This keeps the margins nice -->
+        <a class="navbar-brand" href="../">
+
+            <span id="blog-title">enn-devblog</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#bs-navbar" aria-controls="bs-navbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="bs-navbar">
+            <ul class="navbar-nav mr-auto">
+<li class="nav-item dropdown">
+<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">The Blog</a>
+            <div class="dropdown-menu">
+                    <a href="../archive.html/" class="dropdown-item">Archived Posts</a>
+                    <a href="." class="dropdown-item">All Posts</a>
+            </div>
+            </li>
+<li class="nav-item dropdown">
+<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">About</a>
+            <div class="dropdown-menu">
+                    <a href="../about-me/" class="dropdown-item">About me</a>
+            </div>
+                </li>
+<li class="nav-item">
+<a href="../categories/index.html" class="nav-link">Tags</a>
+                </li>
+<li class="nav-item">
+<a href="../pages/contact.html" class="nav-link">Contact</a>
+
+                
+            </li>
+</ul>
+<ul class="navbar-nav navbar-right">
+<li>
+            </li>
+<li class="nav-item"><a href="../ru/" rel="alternate" hreflang="ru" class="nav-link">Русский</a></li>
+
+                
+                    
+    
+    <li class="nav-item">
+    <a href="accidental-kernel.rst" id="sourcelink" class="nav-link">Source</a>
+    </li>
+
+
+                
+            </ul>
+</div>
+<!-- /.navbar-collapse -->
+    </div>
+<!-- /.container -->
+</nav><!-- End of Menubar --><div class="container" id="content" role="main">
+    <div class="body-content">
+        <!--Body content-->
+        
+        
+        
+<article class="post-text h-entry hentry postpage" itemscope="itemscope" itemtype="http://schema.org/Article"><header><h1 class="p-name entry-title" itemprop="headline name"><a href="#" class="u-url">Accidentally becoming a bootloader dev</a></h1>
+
+        <div class="metadata">
+            <p class="byline author vcard p-author h-card"><span class="byline-name fn p-name" itemprop="author">
+                    enn
+            </span></p>
+            <p class="dateline">
+            <a href="#" rel="bookmark">
+            <time class="published dt-published" datetime="2022-07-07T21:10:56+02:00" itemprop="datePublished" title="2022-07-07 21:10">2022-07-07 21:10</time></a>
+            </p>
+            
+        <p class="sourceline"><a href="accidental-kernel.rst" class="sourcelink">Source</a></p>
+
+        </div>
+        
+        <div class="metadata posttranslations translations">
+            <h3 class="posttranslations-intro">Also available in:</h3>
+                <p><a href="../ru/posts/hello-world.html" rel="alternate" hreflang="ru">Русский</a></p>
+        </div>
+
+    </header><div class="e-content entry-content" itemprop="articleBody text">
+    <p>And you know how it goes, one thing leads to another and you get
+caught up in the most fucked up of shit­ <a class="footnote-reference brackets" href="accidental-kernel.html#footnote-1" id="footnote-reference-1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> known to programming
+man just because you weren't careful enough to know better. Over
+time (say, over the last 18 months) I settled into a weird cycle
+of going back and forth between <code class="docutils literal">C</code> and assembly language, and now
+I'm feverishly coding in <code class="docutils literal">Aarch64</code>.</p>
+<p>So, when a boy meets the unbridled and toxic power of a programming
+'language' that is geared towards pain and bitbanging, it's inevitable
+that he fall in love, and that love breeds monsters.</p>
+<section id="the-first-sin"><h2>The First Sin</h2>
+<p>Anyone who's ever programmed in the kernel knows that it's a bit
+of a pickle to work with. Unlike in user-space, you're very very
+close to the metal, you're working with raw memory addresses,
+you're fucking around and abusing the <code class="docutils literal"><span class="pre">alloca()­</span></code> function­ <a class="footnote-reference brackets" href="accidental-kernel.html#footnote-2" id="footnote-reference-2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> and unwinding your
+stacks manually to save three cycles on some signal return code
+that your compiler foolishly tried to play it safe with. This is
+all really cool stuff that you can tell your friends and they'll be
+really impressed (if they're absolute geek fucks who have never seen
+a titty in their lives), and you'd be the star of the evening.</p>
+<p>After three good mouthfuls of whisky you're starting to feel
+a bit doozy, and you notice the man in the corner of the room. Who
+is he? How did he get here? If you had any bitches, he'd be scaring
+them away right this fucking now. You don't have hoes, and the booze
+has made sure you definitely have no inhibitions either, so you
+come up to him and strike up a conversation.</p>
+<p>'Hey, kiddo', he goes, 'do you want to learn about the <em>dark</em> dark
+arts, or are you just forever gonna be a cuck and live in the
+<em>high-level</em> lands?'</p>
+<p>The way he says it oozes with testosterone and the smell of stale
+sweat, and you just know you've sold your soul to the devil.</p>
+<section id="calling-conventions"><h3>Calling conventions</h3>
+<p>An operating system is no good if it can run only one process at
+any one time inside only one function. To facilitate the generation of
+function intercommunication, compiler vendors figured out that they
+should make it so that each individual snippet of code could
+be compiled independently after the preprocessor was done with its
+thing. All code should have an agreed-upon way of dealing with
+the stack and registers the CPU provides, and this means that a form
+of convention for calling a function came to be. A calling convention
+is basically the agreed-upon way that a caller and its subroutine
+deal with memory. On the calling side, the procedure has to deal with
+registers and passing arguments when calling a subroutine, how it
+gets them returned from the subroutine, and so on. On the called side,
+the subroutine handles receiving the args, managing the registers
+that its caller did not save, and then returning the result, and all
+this in a very rigid very consistent way.</p>
+<p>Apart from there necessarily being a calling convention for every
+architecture your code runs on (duh), the funny part is that there's
+a calling convention for <em>each compiler, vendor</em> and <em>operating system</em>
+you're compiling for. This is one of the reasons that, in the old
+days of the Wild DOS West, calling a function compiled with a different
+compiler than yours would mysteriously return garbage or nonsense
+values <a class="footnote-reference brackets" href="accidental-kernel.html#footnote-3" id="footnote-reference-3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a> even though you did absolutely nothing wrong (as far as
+you knew). One hairpull trigger for people working on Linux-Windows
+interop is also calling convention mismatch: Linux kernel code uses the
+<code class="docutils literal">SystemV</code> calling convention expecting the order of arguments to
+be <code class="docutils literal">RDI, RSI, RDX, R10, R8, R9</code> and Windows uses Microsoft's x86-64
+calling convention that goes <code class="docutils literal">RCX, RDX, R8, R9</code>, and handles
+the stack differently (every function call always wastes 32 bytes on Windows).</p>
+<p>But calling conventions are a myth. You don't have to use them,
+you don't have to care about them, you don't have to respect who saves
+what.</p>
+<p>But how?</p>
+</section><section id="assembly-programming-within-an-operating-system"><h3>Assembly programming within an operating system</h3>
+<p>A good and polite compiler like GCC not only looks away when you shoot
+yourself in the foot, it politely gives you more ammo to do it when you
+run out. One of those footgun bullets is every major compiler letting you
+blast raw assembly inline into your code. For example, GCC pretends you're
+writing <em>strings</em> for your <em>assembler</em>, and lets you do the following shitfest: <a class="footnote-reference brackets" href="accidental-kernel.html#footnote-4" id="footnote-reference-4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a></p>
+<div class="code"><pre class="code c"><a id="rest_code_460b77396bf34e609a03cf3eb815125d-1" name="rest_code_460b77396bf34e609a03cf3eb815125d-1" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-1"></a><span class="kt">int</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-2" name="rest_code_460b77396bf34e609a03cf3eb815125d-2" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-2"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">t1</span><span class="p">,</span><span class="n">t2</span><span class="p">;</span><span class="w">  </span><span class="c1">// dummy output spill slots</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-3" name="rest_code_460b77396bf34e609a03cf3eb815125d-3" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-3"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">r1</span><span class="p">,</span><span class="n">r2</span><span class="p">;</span><span class="w">  </span><span class="c1">// dummy output tmp registers</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-4" name="rest_code_460b77396bf34e609a03cf3eb815125d-4" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-4"></a><span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">res</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-5" name="rest_code_460b77396bf34e609a03cf3eb815125d-5" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-5"></a>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-6" name="rest_code_460b77396bf34e609a03cf3eb815125d-6" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-6"></a><span class="w">    </span><span class="k">asm</span><span class="w"> </span><span class="p">(</span><span class="s">"# operands: %0  %1  %2  %3  %4  %5  %6  %7  %8</span><span class="se">\n\t</span><span class="s">"</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-7" name="rest_code_460b77396bf34e609a03cf3eb815125d-7" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-7"></a><span class="w">         </span><span class="s">"imull  $123, %[b], %[res]</span><span class="se">\n\t</span><span class="s">"</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-8" name="rest_code_460b77396bf34e609a03cf3eb815125d-8" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-8"></a><span class="w">         </span><span class="s">"mov   %[res], %[spill1]</span><span class="se">\n\t</span><span class="s">"</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-9" name="rest_code_460b77396bf34e609a03cf3eb815125d-9" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-9"></a><span class="w">         </span><span class="s">"mov   %[a], %%ecx</span><span class="se">\n\t</span><span class="s">"</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-10" name="rest_code_460b77396bf34e609a03cf3eb815125d-10" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-10"></a><span class="w">         </span><span class="s">"mov   %[b], %[tmp1]</span><span class="se">\n\t</span><span class="s">"</span><span class="w">  </span><span class="c1">// let the compiler allocate tmp regs, unless you need specific regs e.g. for a shift count</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-11" name="rest_code_460b77396bf34e609a03cf3eb815125d-11" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-11"></a><span class="w">         </span><span class="s">"mov   %[spill1], %[res]</span><span class="se">\n\t</span><span class="s">"</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-12" name="rest_code_460b77396bf34e609a03cf3eb815125d-12" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-12"></a><span class="w">    </span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="n">res</span><span class="p">]</span><span class="w"> </span><span class="s">"=&amp;r"</span><span class="w"> </span><span class="p">(</span><span class="n">res</span><span class="p">),</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-13" name="rest_code_460b77396bf34e609a03cf3eb815125d-13" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-13"></a><span class="w">      </span><span class="p">[</span><span class="n">tmp1</span><span class="p">]</span><span class="w"> </span><span class="s">"=&amp;r"</span><span class="w"> </span><span class="p">(</span><span class="n">r1</span><span class="p">),</span><span class="w"> </span><span class="p">[</span><span class="n">tmp2</span><span class="p">]</span><span class="w"> </span><span class="s">"=&amp;r"</span><span class="w"> </span><span class="p">(</span><span class="n">r2</span><span class="p">),</span><span class="w">  </span><span class="c1">// early-clobber</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-14" name="rest_code_460b77396bf34e609a03cf3eb815125d-14" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-14"></a><span class="w">      </span><span class="p">[</span><span class="n">spill1</span><span class="p">]</span><span class="w"> </span><span class="s">"=m"</span><span class="w"> </span><span class="p">(</span><span class="n">t1</span><span class="p">),</span><span class="w"> </span><span class="p">[</span><span class="n">spill2</span><span class="p">]</span><span class="w"> </span><span class="s">"=&amp;rm"</span><span class="w"> </span><span class="p">(</span><span class="n">t2</span><span class="p">)</span><span class="w">  </span><span class="c1">// allow spilling to a register if there are spare regs</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-15" name="rest_code_460b77396bf34e609a03cf3eb815125d-15" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-15"></a><span class="w">      </span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="w"> </span><span class="s">"+&amp;r"</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-16" name="rest_code_460b77396bf34e609a03cf3eb815125d-16" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-16"></a><span class="w">      </span><span class="p">,</span><span class="w"> </span><span class="s">"+m"</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="kt">char</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="p">)[])</span><span class="w"> </span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="c1">// dummy in/output instead of memory clobber</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-17" name="rest_code_460b77396bf34e609a03cf3eb815125d-17" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-17"></a><span class="w">    </span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="n">a</span><span class="p">]</span><span class="w"> </span><span class="s">"rmi"</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="w"> </span><span class="p">[</span><span class="n">b</span><span class="p">]</span><span class="w"> </span><span class="s">"rm"</span><span class="w"> </span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="w">  </span><span class="c1">// a can be an immediate, but b can't</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-18" name="rest_code_460b77396bf34e609a03cf3eb815125d-18" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-18"></a><span class="w">    </span><span class="o">:</span><span class="w"> </span><span class="s">"ecx"</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-19" name="rest_code_460b77396bf34e609a03cf3eb815125d-19" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-19"></a><span class="w">    </span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-20" name="rest_code_460b77396bf34e609a03cf3eb815125d-20" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-20"></a>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-21" name="rest_code_460b77396bf34e609a03cf3eb815125d-21" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-21"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">res</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-22" name="rest_code_460b77396bf34e609a03cf3eb815125d-22" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-22"></a>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-23" name="rest_code_460b77396bf34e609a03cf3eb815125d-23" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-23"></a><span class="w">    </span><span class="c1">// p unused in the rest of the function</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-24" name="rest_code_460b77396bf34e609a03cf3eb815125d-24" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-24"></a><span class="w">    </span><span class="c1">// so it's really just an input to the asm,</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-25" name="rest_code_460b77396bf34e609a03cf3eb815125d-25" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-25"></a><span class="w">    </span><span class="c1">// which the asm is allowed to destroy</span>
+<a id="rest_code_460b77396bf34e609a03cf3eb815125d-26" name="rest_code_460b77396bf34e609a03cf3eb815125d-26" href="accidental-kernel.html#rest_code_460b77396bf34e609a03cf3eb815125d-26"></a><span class="p">}</span><span class="w"></span>
+</pre></div>
+<p>Furthermore, and what's really the funniest jokermode part of this, is that
+you can just call (well, <code class="docutils literal">jmp</code> to) functions from within your assembly,
+and these other functions can be other assembly, and this lets you bypass the
+pesky calling convention, ignore setting up the stack and saving registers
+and, the actual Apple of Eden here, gives you a taste of how life is like
+when even <code class="docutils literal">C</code> is a <em>high-level</em>, restrained language.</p>
+<p>This still means you have to abide by the rules the OS has set out
+for you, since the kernel does a lot of scheduling, doesn't let you touch
+memory pages that you 'should avoid' and 'are sensitive', and in general
+just gets in your way. If you're a Linux bro, you can 'just' go into the
+kernel, modify the guards you need or don't need, and rebuild the shit from
+source. If you're in Windows land, half the things are locked up tighter
+than a nun's cunt, so you're stuck with hacky injections and disassembling
+Microsoft's <code class="docutils literal">.dll</code> files.</p>
+<p>The real benefits of this approach is when you're really juicing blood from
+a stone and trying to optimise the last cycle out of code. Sometimes this
+does pay off <a class="footnote-reference brackets" href="accidental-kernel.html#footnote-5" id="footnote-reference-5" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a> and sometimes the compiler is really, truly smarter than
+you and the best case code is, in fact, the dumb shit it bleeted out. Admit
+defeat.</p>
+</section><section id="assembly-programming-deep-in-kernel-land"><h3>Assembly programming deep in kernel land</h3>
+<p>Nobody does this one, and for a reason. Code this deep down gets really
+nasty and convoluted (at least judging from Linux internals), and you're
+doing away with hundreds of manyears of tradition and whatnot. You know
+that there's no data types in assembly? It's just chains of bytes, in
+an orientation you don't actually know (is it big or little endian?),
+without anything to actually tell you what's what. You can just pop a float
+from the stack into an integer register, and treat it like a really funky
+<code class="docutils literal">int</code>. Nobody will know, nobody will care, and you can do the Quake
+square root without any typecasts in mind.</p>
+<p>The people who live in this layer are usually the real chads of code dev.
+You can tell by how few Rustaceans actually poke their head below the '''systems'''
+layer. There really isn't any fun to be had here, and the main places
+the Linux kernel uses inline assembly over C code is when doing syscalls,
+for checking register states, doing atomic operations and all sorts of
+nasty barriers that tell a CPU to stop being smart about its memory or
+execution order and to do the things we told it to do in the <em>exact</em> order
+we tell it to.</p>
+</section></section><section id="the-second-sin"><h2>The Second Sin</h2>
+<p>But this wasn't enough. I lived a bit in assembly land but generally
+avoided it because I hated recalling the exact sequence of jumping
+through hoops every time I wanted to do anything useful with my assembly.
+Did you know that inline assembly from within <code class="docutils literal">C++</code> used what's realistically,
+but not theoretically, a different calling convention than <code class="docutils literal">C</code> code, except
+in the most trivial of cases? <a class="footnote-reference brackets" href="accidental-kernel.html#footnote-6" id="footnote-reference-6" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a> Did you also know that the OS will also
+execute your code in a nondeterministic way? <a class="footnote-reference brackets" href="accidental-kernel.html#footnote-7" id="footnote-reference-7" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a></p>
+<p>Calling <code class="docutils literal">printf()</code> was a chore, using BIOS interrupts to write text with
+was a different chore (who knew that <code class="docutils literal">int 10h</code> was so messy on <code class="docutils literal">x86</code>?),
+and don't you even dare think about doing anything graphical with
+modern hardware.</p>
+<p>No, my second sin was getting a simpler piece of hardware—I got an Arduino
+Due and, unfortunately, decided to play with it in assembly. Things got
+really fun and I ended up absorbing more knowledge about the board specs
+than I really should have (who knew that it was that easy to use clock
+mismatches as a RNG that's better than the one provided by the manufacturer?).</p>
+<p>The Due is a 'simple' board controlled by a <code class="docutils literal">ATSAM3X8E</code> chip based off
+the Arm Cortex-M3 core, running on the ARMv7-M instruction set. The 32-bit ARM
+instruction set comes with a whole bunch of goodies that you wouldn't see
+the <code class="docutils literal">x86</code> be caught dead with: all instructions work with all registers
+(cf. the <code class="docutils literal">x86</code> trying to do <code class="docutils literal">mul</code>), instructions are <em>fixed-width</em>
+(meaning you can reason about code size even without assembling!),
+and conditional code does not require any jumps since practically
+all the instructions have a large number of conditional variants.</p>
+<p>But to program the Due you needed practically no fancy magic, you
+can just get the board, write absolutely tiny code (as in, your programs
+will rarely pop a couple of kilobytes in <code class="docutils literal">C</code> mode), flash it with
+your junk code, and just power it up. Unlike the <code class="docutils literal">x86</code> platform,
+the startup sequence quite literally is 'start at <code class="docutils literal">0x0</code>, execute
+code, interrupt vectors are in the words immediately after the start position'.
+There's no juggling with real, unreal or protected mode, no boot sectors,
+no trying to claw your way out of 16-bit space to 32-bit.</p>
+<p>The compiler the development suite gives you handles most of the work
+for you admittedly, but if you pilfer the headers for a few magic numbers
+and the correct sequence of memory positions to blast, you can actually
+get the Arduino going doing genuine work off an assembly file.</p>
+<p>But getting output going beyond 'turn LED on' and input beyond
+'button was pressed' was both going to be an electrical chore to wire,
+and a bit expensive (screens and whatnot compatible with the
+Arduino didn't come cheap at the time), so in my majestic
+foolishness I decided I wanted to do Arm assembly programming
+on my <code class="docutils literal">x86</code> desktop. This necessitated downloading, installing,
+using QEMU.</p>
+</section><section id="the-third-sin"><h2>The Third Sin</h2>
+<p>So, QEMU is an emulator suite for a bunch of architectures, and a bunch
+of computers based off them. In the Arm family it emulates a couple dozen
+boards, all of them imperfectly and partially, and all of them in
+a very underdocumented way: to get your bearings you have to read
+things like the actual source comments (usually outdated), the RedHat
+mailing list (—''—), schematics of the boards (sometimes just missing),
+of the devices those boards include (...) etc.</p>
+<p>So I decided that the next best thing would be to do raw, bare-metal
+programming on the <code class="docutils literal">virt</code> board—a fake QEMU platform whose components
+you can pick and choose yourself, and that's guaranteed to have the best
+emulation experience because it's not tied to actual hardware demands
+(did you know that the Raspi boards are booted through their black-box
+GPU that runs a binary blob kernel that we have no idea as to how it works?)
+and you can just pick and choose parts and QEMU will try and make them work.
+The <code class="docutils literal">virt</code> board comes with some predetermined parts as well so you
+don't have to do <em>all</em> the picking and choosing, which is cool.</p>
+<p>And then you realise, again, that there is absolutely no documentation
+for anything you want to do, that nobody's publicly written about what
+they did to enable the things you want, and that there is between
+'practically no' code and 'no' code out there that does what you want to do.</p>
+<p>So the first thing I wanted to do was to write a sort of Hello World
+to see any output being displayed. This meant <em>any</em> sort of output
+whatsoever from the board to the 'outside world', which for now meant
+getting it to write to console.</p>
+<p>At this point I was still oblivious.</p>
+<p>The way that these kinds of boards communicate with the outside
+world is, at its most basic level, just getting a hose of bytes and
+blasting a memory location in a specific way until something you want
+to happen happens. To get the <code class="docutils literal">virt</code> to shit out text, I had to
+talk to the <code class="docutils literal">UART</code> device which QEMU helpfully semiautomatically
+maps to <code class="docutils literal">stdout</code> / the console. So you go and read the documentation,
+realise you're out of your depth, the links slowly turn from blue
+to purple, and it takes you three days to realise what a mess it all is.</p>
+<p>The UART is a memory-mapped input-output device (MMIO) that's mapped
+to a special memory address somewhere between the flash space (<code class="docutils literal">0x0</code>) and
+start of RAM (here that's <code class="docutils literal">0x40000000</code>) and the MMU pretends that
+it's a real memory location and not a fake cop-out redirection. So,
+to get the thing going I had to:</p>
+<ol class="arabic simple">
+<li><p>figure out how the fake MMU maps devices</p></li>
+<li><p>learn about the <code class="docutils literal">dtb</code> (device-tree blob)</p></li>
+<li><p>learn how the UART device works in the real world</p></li>
+<li><p>look at UART set-up code for the Raspi3</p></li>
+<li><p>translate this into the <code class="docutils literal">virt</code> UART specs</p></li>
+<li><p>figure out the location of the <code class="docutils literal">virt</code> UART</p></li>
+<li><p>???</p></li>
+<li><p>profit?</p></li>
+</ol>
+<p>One of the first iterations of this code looked give-or-take like this
+(magic numbers not included):</p>
+<div class="code"><pre class="code asm"><a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-1" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-1" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-1"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">AUX_ENABLE</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-2" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-2" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-2"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-3" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-3" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-3"></a><span class="nf">and</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x1</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-4" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-4" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-4"></a><span class="nf">str</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-5" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-5" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-5"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">AUX_MU_CNTL</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-6" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-6" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-6"></a><span class="nf">str</span><span class="w">             </span><span class="no">xzr</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-7" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-7" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-7"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">AUX_MU_MCR</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-8" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-8" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-8"></a><span class="nf">str</span><span class="w">             </span><span class="no">xzr</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-9" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-9" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-9"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">AUX_MU_IER</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-10" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-10" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-10"></a><span class="nf">str</span><span class="w">             </span><span class="no">xzr</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-11" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-11" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-11"></a><span class="nf">mov</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="mi">0x3</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-12" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-12" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-12"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">AUX_MU_LCR</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-13" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-13" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-13"></a><span class="nf">str</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-14" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-14" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-14"></a><span class="nf">mov</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="mi">0xc6</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-15" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-15" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-15"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">AUX_MU_IIR</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-16" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-16" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-16"></a><span class="nf">str</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-17" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-17" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-17"></a><span class="nf">mov</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="mi">0x48</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-18" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-18" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-18"></a><span class="nf">mov</span><span class="w">             </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">AUX_MU_BAUD</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-19" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-19" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-19"></a><span class="nf">str</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-20" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-20" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-20"></a>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-21" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-21" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-21"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">GPFSEL1</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-22" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-22" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-22"></a><span class="nf">mov</span><span class="w">             </span><span class="no">x2</span><span class="p">,</span><span class="w">  </span><span class="mi">0x3F000</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-23" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-23" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-23"></a><span class="nf">and</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x2</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-24" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-24" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-24"></a><span class="nf">mov</span><span class="w">             </span><span class="no">x2</span><span class="p">,</span><span class="w">  </span><span class="mi">#1152</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-25" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-25" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-25"></a><span class="nf">mov</span><span class="w">             </span><span class="no">x3</span><span class="p">,</span><span class="w">  </span><span class="mi">#64</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-26" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-26" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-26"></a><span class="nf">mul</span><span class="w">             </span><span class="no">x2</span><span class="p">,</span><span class="w">  </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x3</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-27" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-27" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-27"></a><span class="nf">orr</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x2</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-28" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-28" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-28"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">GPFSEL1</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-29" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-29" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-29"></a><span class="nf">str</span><span class="w">             </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-30" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-30" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-30"></a><span class="nf">ldr</span><span class="w">             </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">GPPUD</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-31" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-31" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-31"></a><span class="nf">str</span><span class="w">             </span><span class="no">xzr</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-32" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-32" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-32"></a>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-33" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-33" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-33"></a><span class="nf">mov</span><span class="w">     </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="mi">0xA0</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-34" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-34" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-34"></a><span class="nl">_loop_1:</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-35" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-35" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-35"></a><span class="w">        </span><span class="nf">sub</span><span class="w">             </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="mi">#1</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-36" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-36" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-36"></a><span class="w">        </span><span class="nf">nop</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-37" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-37" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-37"></a><span class="w">        </span><span class="nf">cbnz</span><span class="w">            </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_loop_1</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-38" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-38" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-38"></a>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-39" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-39" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-39"></a><span class="nf">mov</span><span class="w">     </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="mi">0xC000</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-40" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-40" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-40"></a><span class="nf">mov</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">GPPUDCLK0</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-41" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-41" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-41"></a><span class="nf">str</span><span class="w">     </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-42" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-42" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-42"></a>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-43" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-43" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-43"></a><span class="nf">mov</span><span class="w">     </span><span class="no">x2</span><span class="p">,</span><span class="w">  </span><span class="mi">0xA0</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-44" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-44" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-44"></a><span class="nl">_loop_2:</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-45" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-45" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-45"></a><span class="w">        </span><span class="nf">sub</span><span class="w">  </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="mi">0x1</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-46" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-46" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-46"></a><span class="w">        </span><span class="nf">nop</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-47" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-47" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-47"></a><span class="w">        </span><span class="nf">cbnz</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_loop_2</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-48" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-48" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-48"></a>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-49" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-49" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-49"></a><span class="nf">str</span><span class="w">     </span><span class="no">xzr</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-50" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-50" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-50"></a><span class="nf">mov</span><span class="w">     </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="mi">0x3</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-51" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-51" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-51"></a><span class="nf">ldr</span><span class="w">     </span><span class="no">x0</span><span class="p">,</span><span class="w">  </span><span class="err">=</span><span class="no">AUX_MU_CNTL</span><span class="w"></span>
+<a id="rest_code_da0e739d120945d2b4588bf7a6f6c09e-52" name="rest_code_da0e739d120945d2b4588bf7a6f6c09e-52" href="accidental-kernel.html#rest_code_da0e739d120945d2b4588bf7a6f6c09e-52"></a><span class="nf">str</span><span class="w">     </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+</pre></div>
+<p>Basically, you 'have' to make sure the device
+is enabled and ready to accept data from you,
+you need to map its 'pins' to MMIO addresses
+the MMU exposed to you, etc etc etc. This specific
+snippet crashed and burned, so I spun the wheels for like a week
+and eventually settled on like 3x the amount of code
+only to get the ability to blit a <em>single byte</em> at a
+time at this device, passing its contents to the <code class="docutils literal">stdout</code>
+in the dumbest and most unsafe possible way since
+I think I just stopped caring about things at that point:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-1" name="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-1" href="accidental-kernel.html#rest_code_bb7bd9f8db9f49678198da9f1983c4d0-1"></a><span class="nf">mov</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x40</span><span class="w"></span>
+<a id="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-2" name="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-2" href="accidental-kernel.html#rest_code_bb7bd9f8db9f49678198da9f1983c4d0-2"></a><span class="nf">ldr</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="err">=</span><span class="no">AUX_MU_IO</span><span class="w"></span>
+<a id="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-3" name="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-3" href="accidental-kernel.html#rest_code_bb7bd9f8db9f49678198da9f1983c4d0-3"></a><span class="nf">str</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x1</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-4" name="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-4" href="accidental-kernel.html#rest_code_bb7bd9f8db9f49678198da9f1983c4d0-4"></a><span class="nf">add</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">#1</span><span class="w"></span>
+<a id="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-5" name="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-5" href="accidental-kernel.html#rest_code_bb7bd9f8db9f49678198da9f1983c4d0-5"></a><span class="nf">str</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x1</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-6" name="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-6" href="accidental-kernel.html#rest_code_bb7bd9f8db9f49678198da9f1983c4d0-6"></a><span class="nf">add</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">#1</span><span class="w"></span>
+<a id="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-7" name="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-7" href="accidental-kernel.html#rest_code_bb7bd9f8db9f49678198da9f1983c4d0-7"></a><span class="nf">str</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x1</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-8" name="rest_code_bb7bd9f8db9f49678198da9f1983c4d0-8" href="accidental-kernel.html#rest_code_bb7bd9f8db9f49678198da9f1983c4d0-8"></a><span class="nf">b.</span><span class="w"></span>
+</pre></div>
+<p>No checking whether the device is ready to accept another byte, no
+checking if it's written or has errored, no gods no kings.</p>
+<p>I was still oblivious, yeah?</p>
+<p>So having enabled the UART and gotten the proverbial Hello World out
+(though ofc I hadn't wrtten a string printer just yet, it would've
+been trivial though), I figured might as well figure out the other
+devices and see how they get set up.</p>
+<p>The first one on the list was the framebuffer. Basically, the dumbest
+possible way to blit pixels onto a surface is to set up a framebuffer
+device with the appropriate dimensions, pitch (how many bytes per
+row of pixels), pixel format (i.e. bits per colour and order of colours)
+and give it a chunk of RAM to read from to the screen.</p>
+<p>The setup for this was even more hellish than the above, since the
+documentation was actually <em>totally absent</em>, so I had to resort
+to the aforementioned RedHat mailing list, and reading the source
+for SeaBIOS and the U-Boot bootloader, and then read some more
+QEMU source code (why does the documentation actually suck so much?)
+etc etc. In short:</p>
+<ol class="arabic simple">
+<li><p>to set up the image, the framebuffer device needs to be set up</p></li>
+<li><p>the way to set up the device is using QEMU's wonderfully underdocumented <code class="docutils literal">fw_cfg</code></p></li>
+<li><p>you need to also verify whether your CPU has something called the 'dma' via the magic number <code class="docutils literal">0x51454d5520434647</code></p></li>
+<li><p>it works by going through the configuration zone looking for a honest to God <em>string</em> value</p></li>
+<li><p>when you find it, you then write a bunch of shit to the config object</p></li>
+<li><p>specifically, you need the dimensions, format, pitch and address</p></li>
+<li><p>voilà! works magically</p></li>
+</ol>
+<p>This took like a week I think. But then, I could just write raw bytes to
+the designated RAM space and things ~just worked~, and I got my dumb little
+images to display with actually no difficulty at all. Godless magic, and I
+still didn't see the error of my ways.</p>
+</section><section id="moment-of-truth"><h2>Moment of Truth</h2>
+<p>The moment where I cracked was when I tried to get
+persistent storage set up, and then I realised what a fucking
+fool I'd been for genuine weeks then.</p>
+<p>The way I wanted to do storage was via a <code class="docutils literal"><span class="pre">virtio-blk-device</span></code>
+which was a simple, abstract interface device for reading and
+writing to an image file for board emulator developers, and the
+interface it provides is, allegedly, a very decent scheme that
+gives <em>bootloader</em> coders another option for storage schemes.
+As a wise man once said: 'The intent of virtio devices is to be
+implemented by hypervisors (such as QEMU). They simplify things a bit,
+so that it’s easier and more efficient for hypervisors and guests to
+communicate, without having to emulate any quirks of real hardware devices.' <a class="footnote-reference brackets" href="accidental-kernel.html#footnote-8" id="footnote-reference-8" role="doc-noteref"><span class="fn-bracket">[</span>8<span class="fn-bracket">]</span></a></p>
+<p>It reads and writes in 512-byte sectors, is of course also
+memory-mapped in its own specific funny way, and to get the device
+set up you need to first <em>discover its secret!! location o:</em> by
+checking more magic numbers (in this case we want <code class="docutils literal">0x74726976</code>)
+and then the device type, and then finally you have to
+actually <em>talk to the device</em> to tell it that it's been
+discovered and that you have a driver for it, and then you
+have to <em>negotiate</em> (yes, that's apparently the term) with it
+to see what intersection of features is supported by both
+your driver and the device <img alt="BroFrustration" src="../emoji/brofrustration.png" style="width: 32px;"></p>
+<p>And this is where I broke. After a knee-deep slough through
+the code in the SeaBIOS repository, <em>again</em>, I ended up
+on the fucking <em>OSDev</em> bootloader page, which is where
+I realised that the monkey business I've been blindly doing has,
+all this time, been writing drivers in a primitive retarded
+bootloader that I never wanted or needed.</p>
+<p>And all I ever fucking wanted was a simple platform to write
+some funny <code class="docutils literal">armasm</code> and get haha clown results back, not this
+level of convoluted hoopjumping that once again revealed how genuinely
+rancid software development is once you get to talk to your devices
+on your own terms. The amount of fucky code I had to write, bin,
+rewrite over the past months, and the amount of hoops I had to
+jump and <em>will</em> have to jump if I want persistent storage, is
+making me start to reconsider writing at least some of this
+code in <code class="docutils literal">C</code>—but then what's the point?</p>
+<p>I started this
+to avoid doing that, so I'm at the fucked up crossroads of
+damned if I do, damned if I don't.</p>
+<hr class="docutils">
+<aside class="footnote brackets" id="footnote-1" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="accidental-kernel.html#footnote-reference-1">1</a><span class="fn-bracket">]</span></span>
+<p>Specifically, here I mean I fucked up
+and got <em>really really</em> into Brainfuck
+programming and algorithmics. Yeah.</p>
+</aside><aside class="footnote brackets" id="footnote-2" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="accidental-kernel.html#footnote-reference-2">2</a><span class="fn-bracket">]</span></span>
+<p>A dear friend introduced plebian me
+to this monster of a function. So,
+malloc() pings the OS to give
+you a void pointer to memory of a
+certain size on the heap expecting you
+to behave really nicely; if malloc()
+is a function for boys, alloca()
+is a function for men: it allocates a
+block of memory <em>on the stack</em>, and you
+can't know if there's enough room for it
+because, unlike malloc() which politely
+tells you it failed in the return value,
+a fail in alloca() just means you
+overflowed the stack and, since we're
+in kernel space, are overwriting operating
+system code or memory as we speak unopposed.
+At least user-space is polite enough to
+segfault you out of this misery.</p>
+</aside><aside class="footnote brackets" id="footnote-3" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="accidental-kernel.html#footnote-reference-3">3</a><span class="fn-bracket">]</span></span>
+<p>Specifically, this would occur when
+using a program compiled for <code class="docutils literal">Win95</code> and
+calling a <code class="docutils literal">Win3.x</code> function with more than
+two arguments in it; the <code class="docutils literal">Pascal</code> calling
+convention that was set up by Borland
+Pascal was the convention common in <code class="docutils literal">Win3.x</code>
+API, and the later <code class="docutils literal">Win32</code> API used
+the <code class="docutils literal">stdcall</code> calling convention that
+was register-compatible and stack-compatible
+with <code class="docutils literal">Pascal</code>'s, but <em>reversed the fucking</em>
+<em>order of arguments</em> for some reason.</p>
+</aside><aside class="footnote brackets" id="footnote-4" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="accidental-kernel.html#footnote-reference-4">4</a><span class="fn-bracket">]</span></span>
+<p>from <a class="reference external" href="https://stackoverflow.com/a/48877683/">https://stackoverflow.com/a/48877683/</a></p>
+</aside><aside class="footnote brackets" id="footnote-5" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="accidental-kernel.html#footnote-reference-5">5</a><span class="fn-bracket">]</span></span>
+<p>There's this dude that managed to squeeze
+just <em>so</em> much blood out of a stone that he made
+a <a class="reference external" href="https://tech.marksblogg.com/fastest-fizz-buzz.html">Fizz-Buzz</a> impementation that produced 16 bytes
+of fizz per CPU cycle, at a rate of 56 GB/s.</p>
+</aside><aside class="footnote brackets" id="footnote-6" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="accidental-kernel.html#footnote-reference-6">6</a><span class="fn-bracket">]</span></span>
+<p>Specifically, the <code class="docutils literal">C++</code> compiler passes
+a hidden pointer to <code class="docutils literal">this</code> in the first available
+register, meaning that now instead of <code class="docutils literal">RDI</code> your
+first argument is passed in through <code class="docutils literal">RSI</code> if you're
+on Linux.</p>
+</aside><aside class="footnote brackets" id="footnote-7" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="accidental-kernel.html#footnote-reference-7">7</a><span class="fn-bracket">]</span></span>
+<p>You can use the task scheduler as a funky RNG if
+you're feeling wicked enough.</p>
+</aside><aside class="footnote brackets" id="footnote-8" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="accidental-kernel.html#footnote-reference-8">8</a><span class="fn-bracket">]</span></span>
+<p>from <a class="reference external" href="https://brennan.io/2020/03/22/sos-block-device/">https://brennan.io/2020/03/22/sos-block-device/</a>, which
+I wish I'd read before spending three days on this in vain.</p>
+</aside></section>
+</div>
+    <aside class="postpromonav"><nav><ul itemprop="keywords" class="tags">
+<li><a class="tag p-category" href="../categories/aarch64.html" rel="tag">aarch64</a></li>
+            <li><a class="tag p-category" href="../categories/armasm.html" rel="tag">armasm</a></li>
+            <li><a class="tag p-category" href="../categories/asm.html" rel="tag">asm</a></li>
+            <li><a class="tag p-category" href="../categories/programming.html" rel="tag">programming</a></li>
+        </ul></nav></aside></article><!--End of body content--><footer id="footer">
+            Contents © 2022         <a href="mailto:whocares0@gmail.com">enn</a> - Powered by         <a href="https://getnikola.com" rel="nofollow">Nikola</a>         
+            
+            
+        </footer>
+</div>
+</div>
+
+
+        <script src="../assets/js/all-nocdn.js"></script><script>
+    baguetteBox.run('div#content', {
+        ignoreClass: 'islink',
+        captions: function(element){var i=element.getElementsByTagName('img')[0];return i===undefined?'':i.alt;}});
+    </script>
+</body>
+</html>
