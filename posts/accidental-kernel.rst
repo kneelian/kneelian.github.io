@@ -6,6 +6,7 @@
 .. link: 
 .. description: 
 .. type: text
+
 Figured I'd start off my first proper blogpost with the problem 
 I recently found myself developing around. Over the years I've been
 getting into more and more esoteric shit; I started programming
@@ -460,17 +461,17 @@ damned if I do, damned if I don't.
 
 .. [2] A dear friend introduced plebian me
    to this monster of a function. So,
-   malloc() pings the OS to give
-   you a void pointer to memory of a
+   ``malloc()`` pings the OS to give
+   you a ``void`` pointer to memory of a
    certain size on the heap expecting you
-   to behave really nicely; if malloc()
-   is a function for boys, alloca()
+   to behave really nicely; if ``malloc()``
+   is a function for boys, ``alloca()``
    is a function for men: it allocates a 
    block of memory *on the stack*, and you
    can't know if there's enough room for it
-   because, unlike malloc() which politely
+   because, unlike ``malloc()`` which politely
    tells you it failed in the return value,
-   a fail in alloca() just means you
+   a fail in ``alloca()`` just means you
    overflowed the stack and, since we're
    in kernel space, are overwriting operating
    system code or memory as we speak unopposed.

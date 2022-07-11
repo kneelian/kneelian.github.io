@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns# article: http://ogp.me/ns/article#
+" lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baremetal Aarch64: Pt 1, Hello World | enn-devblog</title>
+<link href="../../assets/css/all-nocdn.css" rel="stylesheet" type="text/css">
+<meta name="theme-color" content="#5670d4">
+<meta name="generator" content="Nikola (getnikola.com)">
+<link rel="canonical" href="https://example.com/ru/posts/baremetal-part-one.html">
+<!--[if lt IE 9]><script src="../../../assets/js/html5.js"></script><![endif]--><meta name="author" content="enn">
+<link rel="prev" href="hello-world.html" title="hello world" type="text/html">
+<meta property="og:site_name" content="enn-devblog">
+<meta property="og:title" content="Baremetal Aarch64: Pt 1, Hello World">
+<meta property="og:url" content="https://example.com/ru/posts/baremetal-part-one.html">
+<meta property="og:description" content="If you want to start doing anything at all in baremetal Aarch64
+land, you need a chart and a lot of supplies, because the road is
+wild and unkempt. I'll be assuming you know what the 'path' is
+and how">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2022-07-11T02:42:21+02:00">
+<meta property="article:tag" content="aarch64">
+<meta property="article:tag" content="armasm">
+<meta property="article:tag" content="asm">
+<meta property="article:tag" content="hello world">
+<meta property="article:tag" content="programming">
+<link rel="alternate" hreflang="en" href="../../posts/baremetal-part-one.html">
+</head>
+<body>
+<a href="#content" class="sr-only sr-only-focusable">Перейти к главному содержимому</a>
+
+<!-- Menubar -->
+
+<nav class="navbar navbar-expand-md static-top mb-4
+navbar-dark
+bg-dark
+"><div class="container">
+<!-- This keeps the margins nice -->
+        <a class="navbar-brand" href="../">
+
+            <span id="blog-title">enn-devblog</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#bs-navbar" aria-controls="bs-navbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="bs-navbar">
+            <ul class="navbar-nav mr-auto">
+<li class="nav-item dropdown">
+<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">The Blog</a>
+            <div class="dropdown-menu">
+                    <a href="../../archive.html/" class="dropdown-item">Archived Posts</a>
+                    <a href="../../posts/" class="dropdown-item">All Posts</a>
+            </div>
+            </li>
+<li class="nav-item dropdown">
+<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">About</a>
+            <div class="dropdown-menu">
+                    <a href="../../about-me/" class="dropdown-item">About me</a>
+            </div>
+                </li>
+<li class="nav-item">
+<a href="../../categories/index.html" class="nav-link">Tags</a>
+                </li>
+<li class="nav-item">
+<a href="../../pages/contact.html" class="nav-link">Contact</a>
+
+                
+            </li>
+</ul>
+<ul class="navbar-nav navbar-right">
+<li>
+            </li>
+<li class="nav-item"><a href="../../" rel="alternate" hreflang="en" class="nav-link">English</a></li>
+
+                
+                    
+    
+    <li class="nav-item">
+    <a href="baremetal-part-one.rst" id="sourcelink" class="nav-link">Источник</a>
+    </li>
+
+
+                
+            </ul>
+</div>
+<!-- /.navbar-collapse -->
+    </div>
+<!-- /.container -->
+</nav><!-- End of Menubar --><div class="container" id="content" role="main">
+    <div class="body-content">
+        <!--Body content-->
+        
+        
+        
+<article class="post-text h-entry hentry postpage" itemscope="itemscope" itemtype="http://schema.org/Article"><header><h1 class="p-name entry-title" itemprop="headline name"><a href="#" class="u-url">Baremetal Aarch64: Pt 1, Hello World</a></h1>
+
+        <div class="metadata">
+            <p class="byline author vcard p-author h-card"><span class="byline-name fn p-name" itemprop="author">
+                    enn
+            </span></p>
+            <p class="dateline">
+            <a href="#" rel="bookmark">
+            <time class="published dt-published" datetime="2022-07-11T02:42:21+02:00" itemprop="datePublished" title="2022-07-11 02:42">2022-07-11 02:42</time></a>
+            </p>
+            
+        <p class="sourceline"><a href="baremetal-part-one.rst" class="sourcelink">Источник</a></p>
+
+        </div>
+        
+
+    </header><div class="e-content entry-content" itemprop="articleBody text">
+    <p>If you want to start doing <em>anything</em> at all in baremetal Aarch64
+land, you need a chart and a lot of supplies, because the road is
+wild and unkempt. I'll be assuming you know what the 'path' is
+and how to install software (duh), but also I'll assume you can
+learn the Aarch64 ISA and GNU assembler instructions and whatever
+on your own; don't disappoint me. You'll probably have to adapt
+these guidelines to your system; I'm working on Windows 10 so
+all the filenames will be local, but you'll have no issue with the
+needed changes.</p>
+<section id="the-tools"><h2>The Tools</h2>
+<p>We'll be programming in Aarch64, the 64-bit instruction set for Arm
+CPUs. Specifically, we'll be targetting some variety of Armv8-A
+instruction set, the specifics of which we'll hone in on a bit down
+the line. We'll be working on <em>totally</em> fake 'hardware', on an emulated
+board, since this is just about the most convenient thing we can do: no
+flashing, no actual electronics work, no cost, nothing but programming.
+We'll be doing this inside QEMU's emulation suite, since it does a
+<em>pretty</em> good job of emulating most of the things we'll ever need. It
+will provide us with peripherals we'll want to use, such as a serial
+device we'll get data from on the console.</p>
+<p><a class="reference external" href="https://www.qemu.org/download">QEMU</a> is easy to install, it comes with a convenient installer for
+whatever platform you're on. Make absolutely sure you installed the
+Aarch64 <a class="footnote-reference brackets" href="baremetal-part-one.html#footnote-1" id="footnote-reference-1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> emulator; once you've added it to your path, it should give
+you something like <code class="docutils literal"><span class="pre">qemu-system-aarch64.exe</span></code> and its <code class="docutils literal"><span class="pre">-aarch64w.exe</span></code>
+equivalent. For now, we want the first one; the difference between
+these two is that the second one doesn't open a console window, and
+we want one (for now?). You can get it <a class="reference external" href="https://www.qemu.org/download">straight from the website</a>
+there; I'm using QEMU 7 <a class="footnote-reference brackets" href="baremetal-part-one.html#footnote-2" id="footnote-reference-2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> and I suggest you use that too since
+things like memory offsets might change between versions and you'll
+be stuck pulling your hair out.</p>
+<p>The files you'll want from QEMU include this tiny pair:</p>
+<ul class="simple">
+<li><p><code class="docutils literal"><span class="pre">qemu-system-aarch64.exe</span></code></p></li>
+<li><p><code class="docutils literal"><span class="pre">qemu-img.exe</span></code></p></li>
+</ul>
+<p>We'll also be using a cross compiler. You'll be all on your own setting
+this one up. The <em>target triplet</em> <a class="footnote-reference brackets" href="baremetal-part-one.html#footnote-3" id="footnote-reference-3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a> for our machine will be the fairly
+specific <code class="docutils literal"><span class="pre">aarch64-none-elf</span></code>. <a class="footnote-reference brackets" href="baremetal-part-one.html#footnote-4" id="footnote-reference-4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a> You want your compiler to be able
+to emit object code for <code class="docutils literal">aarch64</code> targets, to have no specific vendor
+and no OS it produces this object code for (hence the <code class="docutils literal">none</code>), and you
+want it to produce ELF executables because ELF is really cool and awesome.</p>
+<p>The GCC tools you'll want are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal"><span class="pre">aarch64-none-elf-ld.exe</span></code></p></li>
+<li><p><code class="docutils literal"><span class="pre">aarch64-none-elf-as.exe</span></code></p></li>
+<li><p><code class="docutils literal"><span class="pre">aarch64-none-elf-objcopy.exe</span></code></p></li>
+<li><p><code class="docutils literal"><span class="pre">aarch64-none-elf-gcc.exe</span></code></p></li>
+</ul>
+<p>You probably also want <code class="docutils literal"><span class="pre">aarch64-none-elf-gdb.exe</span></code> but honestly I'm
+not much of a <code class="docutils literal">gdb</code> fan and so far in the project I haven't really
+felt a need for it.</p>
+<p>You'll also want the following things:</p>
+<ul class="simple">
+<li><p><code class="docutils literal">dtc.exe</code> (Device tree compiler)</p></li>
+<li><p><code class="docutils literal">make.exe</code></p></li>
+<li><p>anything capable of running simple scripts (Batch, Powershell, Bash, ...)</p></li>
+</ul></section><section id="qemu-and-platform"><h2>QEMU and Platform</h2>
+<p>QEMU is pretty good at what it does. What it isn't good at is documentation
+of pretty much anything inside it. Some parts are amazingly well documented,
+others just blatantly suck. You'll have to learn to cope with that.</p>
+<p>We'll be developing for the fakest of the emulated boards; our emu target
+is going to be the <code class="docutils literal">virt</code>, which is a platform 'which does not correspond
+to any real hardware; it is designed for use in virtual machines.
+It is the recommended board type if you simply want to run a guest
+such as Linux and do not care about reproducing the idiosyncrasies
+and limitations of a particular bit of real-world hardware', <a class="footnote-reference brackets" href="baremetal-part-one.html#footnote-5" id="footnote-reference-5" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a>
+which means it's ideal for us.</p>
+<p>QEMU emulates just under 50 Arm-based boards which have a more or
+less fixed design and component layout, but the <code class="docutils literal">virt</code> lets
+you pick and choose components. I appreciate that a lot, since I'm
+more or less window shopping for the component that implements
+what I need in the least obnoxious way (it's much easier to just
+put a framebuffer down into RAM than handle a VGA interface, for
+example).</p>
+<p>Eventually, we'll fire our system up using the following incantation:
+<code class="docutils literal"><span class="pre">qemu-system-aarch64.exe</span> <span class="pre">-M</span> virt <span class="pre">-cpu</span> <span class="pre">cortex-a57</span> <span class="pre">-m</span> 256 <span class="pre">-kernel</span> kernel.elf <span class="pre">-serial</span> mon:stdio <span class="pre">-drive</span> id=first,file=disk.img,format=raw,if=none <span class="pre">-device</span> <span class="pre">virtio-blk-device,drive=first</span> <span class="pre">-device</span> ramfb</code>,
+but we'll get to all of this slowly.</p>
+<p>There is a <em>lot</em> to QEMU, so if you want to quickly get
+overwhelmed by it, go ahead and type in <code class="docutils literal"><span class="pre">qemu-system-aarch64.exe</span> <span class="pre">--help</span></code>
+for a massive wall of pain. I have no idea what half of these even
+are, but it's good to go through them and read whatever it gives you.</p>
+<p>The option <code class="docutils literal"><span class="pre">-M</span></code> specifies which machine/board we want QEMU to emulate
+for us, and so we'll tell it <code class="docutils literal"><span class="pre">-M</span> virt</code> to give us our desired
+target. The default CPU of this board is actually going to be the
+Arm Cortex-A15, which is a 32-bit CPU running on Armv7, and not
+what we want; so we have to change the default CPU by passing the
+option <code class="docutils literal"><span class="pre">-cpu</span> <span class="pre">cortex-a57</span></code> which <em>is</em> a 64-bit CPU. <a class="footnote-reference brackets" href="baremetal-part-one.html#footnote-6" id="footnote-reference-6" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a></p>
+<p>We top off our incantation by telling the emulator to give us
+256 megabytes of memory (<code class="docutils literal"><span class="pre">-m</span> 256</code>), that we want
+to boot from a specific kernel we provide (<code class="docutils literal"><span class="pre">-kernel</span> kernel.elf</code>),
+that we <em>don't</em> want graphical output at all (<code class="docutils literal"><span class="pre">-nographic</span></code>)
+and that we want it to redirect the virtual serial port
+to standard output (<code class="docutils literal"><span class="pre">-serial</span> stdio</code>). The final thing
+won't look almost anything alike what I gave you up there,
+but we're working towards it.</p>
+<p>To sum up, our first incantation will be:
+<code class="docutils literal"><span class="pre">qemu-system-aarch64.exe</span> <span class="pre">-M</span> virt <span class="pre">-cpu</span> <span class="pre">cortex-a57</span> <span class="pre">-m</span> 256 <span class="pre">-kernel</span> kernel.elf <span class="pre">-nographic</span> <span class="pre">-serial</span> stdio</code></p>
+<p>Congrats, you got your first QEMU error! We have no kernel to boot.</p>
+</section><section id="minimum"><h2>Minimum</h2>
+<p>First, we want to make sure that our toolchain is in order and that
+we're assembling our code right. To do this, we'll need to know
+<em>how</em> to even assemble and link our code. Tough situation. Before we
+even assemble our first program, the linker needs to know where in
+memory to put our code, and we need to write a makefile to automate
+this process. Since the <code class="docutils literal">virt</code> board with our chosen CPU supports
+a MMU and emulates a bunch of memory foolishnesses, we'll actually
+be putting our kernel in RAM, and so we need to know just where this
+RAM exactly is.</p>
+<p>We'll do this adding the following to our previous invocation:
+<code class="docutils literal"><span class="pre">-machine</span> dumpdtb=out.dtb</code>. This will dump a device tree blob
+to disk, and we'll have to convert it to a readable format using
+<code class="docutils literal">dtc</code> that I mentioned earlier, by invoking it as
+<code class="docutils literal">dtc.exe <span class="pre">-I</span> dtb <span class="pre">-O</span> dts <span class="pre">-o</span> out.txt out.dtb</code>. My own blob generates
+the following device tree:</p>
+<div class="code"><pre class="code text"><a id="rest_code_4a4f441fe69f4ab49369716276155d61-1" name="rest_code_4a4f441fe69f4ab49369716276155d61-1" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-1"></a>/dts-v1/;
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-2" name="rest_code_4a4f441fe69f4ab49369716276155d61-2" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-2"></a>
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-3" name="rest_code_4a4f441fe69f4ab49369716276155d61-3" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-3"></a>/ {
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-4" name="rest_code_4a4f441fe69f4ab49369716276155d61-4" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-4"></a>        interrupt-parent = &lt;0x8002&gt;;
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-5" name="rest_code_4a4f441fe69f4ab49369716276155d61-5" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-5"></a>        #size-cells = &lt;0x02&gt;;
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-6" name="rest_code_4a4f441fe69f4ab49369716276155d61-6" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-6"></a>        #address-cells = &lt;0x02&gt;;
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-7" name="rest_code_4a4f441fe69f4ab49369716276155d61-7" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-7"></a>        compatible = "linux,dummy-virt";
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-8" name="rest_code_4a4f441fe69f4ab49369716276155d61-8" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-8"></a>
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-9" name="rest_code_4a4f441fe69f4ab49369716276155d61-9" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-9"></a>        psci {
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-10" name="rest_code_4a4f441fe69f4ab49369716276155d61-10" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-10"></a>                migrate = &lt;0xc4000005&gt;;
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-11" name="rest_code_4a4f441fe69f4ab49369716276155d61-11" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-11"></a>                cpu_on = &lt;0xc4000003&gt;;
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-12" name="rest_code_4a4f441fe69f4ab49369716276155d61-12" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-12"></a>                cpu_off = &lt;0x84000002&gt;;
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-13" name="rest_code_4a4f441fe69f4ab49369716276155d61-13" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-13"></a>                cpu_suspend = &lt;0xc4000001&gt;;
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-14" name="rest_code_4a4f441fe69f4ab49369716276155d61-14" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-14"></a>                method = "hvc";
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-15" name="rest_code_4a4f441fe69f4ab49369716276155d61-15" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-15"></a>                compatible = "arm,psci-1.0\0arm,psci-0.2\0arm,psci";
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-16" name="rest_code_4a4f441fe69f4ab49369716276155d61-16" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-16"></a>        };
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-17" name="rest_code_4a4f441fe69f4ab49369716276155d61-17" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-17"></a>
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-18" name="rest_code_4a4f441fe69f4ab49369716276155d61-18" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-18"></a>        memory@40000000 {
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-19" name="rest_code_4a4f441fe69f4ab49369716276155d61-19" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-19"></a>                reg = &lt;0x00 0x40000000 0x00 0x10000000&gt;;
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-20" name="rest_code_4a4f441fe69f4ab49369716276155d61-20" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-20"></a>                device_type = "memory";
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-21" name="rest_code_4a4f441fe69f4ab49369716276155d61-21" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-21"></a>        };
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-22" name="rest_code_4a4f441fe69f4ab49369716276155d61-22" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-22"></a>        .
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-23" name="rest_code_4a4f441fe69f4ab49369716276155d61-23" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-23"></a>        .
+<a id="rest_code_4a4f441fe69f4ab49369716276155d61-24" name="rest_code_4a4f441fe69f4ab49369716276155d61-24" href="baremetal-part-one.html#rest_code_4a4f441fe69f4ab49369716276155d61-24"></a>        .
+</pre></div>
+<p>Of course, I trimmed it since the output is ~9kb long, but we have what
+we need right now right at the start of the tree. We see that
+our device's memory starts at the 1GB mark (<code class="docutils literal">0x40000000</code>), which
+means this is where we'll put our kernel.</p>
+<p>We are going to need a loader script, and I'm using this stub for
+the time being:</p>
+<div class="code"><pre class="code text"><a id="rest_code_9669f1050cbb4c9797967eca8b290965-1" name="rest_code_9669f1050cbb4c9797967eca8b290965-1" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-1"></a>ENTRY(_reset)
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-2" name="rest_code_9669f1050cbb4c9797967eca8b290965-2" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-2"></a>SECTIONS
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-3" name="rest_code_9669f1050cbb4c9797967eca8b290965-3" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-3"></a>{
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-4" name="rest_code_9669f1050cbb4c9797967eca8b290965-4" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-4"></a>        . = 0x40000000;
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-5" name="rest_code_9669f1050cbb4c9797967eca8b290965-5" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-5"></a>        .startup . : { kernel.o(.text.startup) }
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-6" name="rest_code_9669f1050cbb4c9797967eca8b290965-6" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-6"></a>        .text : { *(.text) }
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-7" name="rest_code_9669f1050cbb4c9797967eca8b290965-7" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-7"></a>        .data : { *(.data) }
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-8" name="rest_code_9669f1050cbb4c9797967eca8b290965-8" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-8"></a>        .bss : { *(.bss COMMON) }
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-9" name="rest_code_9669f1050cbb4c9797967eca8b290965-9" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-9"></a>        . = ALIGN(16);
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-10" name="rest_code_9669f1050cbb4c9797967eca8b290965-10" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-10"></a>        . = . + 0x100000; /* 1MB of stack atop of BSS */
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-11" name="rest_code_9669f1050cbb4c9797967eca8b290965-11" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-11"></a>        stack_top = .;
+<a id="rest_code_9669f1050cbb4c9797967eca8b290965-12" name="rest_code_9669f1050cbb4c9797967eca8b290965-12" href="baremetal-part-one.html#rest_code_9669f1050cbb4c9797967eca8b290965-12"></a>}
+</pre></div>
+<p>Did I mention you'll have to wrangle with writing your own
+linker scripts? You'll have to wrangle with writing yur own
+linker scripts. The above script will suffice for now, though
+we might want to expand it later. I've also taken the liberty
+of naming our entry point <code class="docutils literal">_reset</code>; I particularly like
+using underscores for label names and allcaps for constants,
+but your mileage may vary. Save it as <code class="docutils literal">kernel.ld</code> for now.</p>
+<p>For our makefile, we have the most rudimentary thing known to
+man for now:</p>
+<div class="code"><pre class="code make"><a id="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-1" name="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-1" href="baremetal-part-one.html#rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-1"></a><span class="nv">CROSS</span><span class="o">=</span>aarch64-none-elf-
+<a id="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-2" name="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-2" href="baremetal-part-one.html#rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-2"></a>
+<a id="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-3" name="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-3" href="baremetal-part-one.html#rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-3"></a><span class="nf">all</span><span class="o">:</span> <span class="n">kernel</span>.<span class="n">elf</span>
+<a id="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-4" name="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-4" href="baremetal-part-one.html#rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-4"></a>
+<a id="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-5" name="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-5" href="baremetal-part-one.html#rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-5"></a><span class="nf">kernel.o</span><span class="o">:</span> <span class="n">kernel</span>.<span class="n">s</span>
+<a id="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-6" name="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-6" href="baremetal-part-one.html#rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-6"></a>        <span class="k">$(</span>CROSS<span class="k">)</span>as.exe -g -c $&lt; -o <span class="nv">$@</span>
+<a id="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-7" name="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-7" href="baremetal-part-one.html#rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-7"></a>
+<a id="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-8" name="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-8" href="baremetal-part-one.html#rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-8"></a><span class="nf">kernel.elf</span><span class="o">:</span> <span class="n">kernel</span>.<span class="n">o</span>
+<a id="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-9" name="rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-9" href="baremetal-part-one.html#rest_code_fc456ba9d2e64bcd8b0d4f1af3011755-9"></a>        <span class="k">$(</span>CROSS<span class="k">)</span>ld.exe -Tkernel.ld $^ -o <span class="nv">$@</span>
+</pre></div>
+<p>This will produce an object file out of the assembly source,
+and then use the linker script to produce an ELF executable
+with the proper section offsets.</p>
+<p>All we have left is to write our first assembly file and
+we're good to go. The most barebones stub we'll be using
+for now is:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-1" name="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-1" href="baremetal-part-one.html#rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-1"></a><span class="na">.section</span><span class="w"> </span><span class="no">.text.startup</span><span class="w"></span>
+<a id="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-2" name="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-2" href="baremetal-part-one.html#rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-2"></a><span class="na">.global</span><span class="w"> </span><span class="no">_Reset</span><span class="w"></span>
+<a id="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-3" name="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-3" href="baremetal-part-one.html#rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-3"></a><span class="nl">_Reset:</span><span class="w"></span>
+<a id="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-4" name="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-4" href="baremetal-part-one.html#rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-4"></a><span class="w">    </span><span class="nf">mov</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x40</span><span class="w"></span>
+<a id="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-5" name="rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-5" href="baremetal-part-one.html#rest_code_fbfdc7d1adc742799e04bd1bbc5ba996-5"></a><span class="w">    </span><span class="nf">b</span><span class="w"> </span><span class="p">.</span><span class="w"></span>
+</pre></div>
+<p>Save that as <code class="docutils literal">kernel.s</code> and finally run the makefile. This
+should produce the file <code class="docutils literal">kernel.elf</code>, as we specified in the
+makefile, and you almost certainly won't be able to run this
+executable natively on your machine. That's alright. Run it
+through QEMU (remember the error you got last time?) and it should
+freeze instead of error out! This is actually <em>good</em>, because
+it means the code we wrote is actually doing what we wrote (we
+told the CPU to do an infinite loop).</p>
+<p>If you want to <em>see</em> the CPU's current instructions, you can
+pass a further commandline argument <code class="docutils literal"><span class="pre">-d</span> in_asm</code> and it'll
+blit out the instructions to the console as they're being executed.
+For our trashfire kernel up there, it generates the following:</p>
+<div class="code"><pre class="code text"><a id="rest_code_15ef610d8177407aa67a99bfda1cd9d0-1" name="rest_code_15ef610d8177407aa67a99bfda1cd9d0-1" href="baremetal-part-one.html#rest_code_15ef610d8177407aa67a99bfda1cd9d0-1"></a>IN:
+<a id="rest_code_15ef610d8177407aa67a99bfda1cd9d0-2" name="rest_code_15ef610d8177407aa67a99bfda1cd9d0-2" href="baremetal-part-one.html#rest_code_15ef610d8177407aa67a99bfda1cd9d0-2"></a>0x40000000:  d2800800  movz     x0, #0x40
+<a id="rest_code_15ef610d8177407aa67a99bfda1cd9d0-3" name="rest_code_15ef610d8177407aa67a99bfda1cd9d0-3" href="baremetal-part-one.html#rest_code_15ef610d8177407aa67a99bfda1cd9d0-3"></a>0x40000004:  14000000  b        #0x40000004
+<a id="rest_code_15ef610d8177407aa67a99bfda1cd9d0-4" name="rest_code_15ef610d8177407aa67a99bfda1cd9d0-4" href="baremetal-part-one.html#rest_code_15ef610d8177407aa67a99bfda1cd9d0-4"></a>
+<a id="rest_code_15ef610d8177407aa67a99bfda1cd9d0-5" name="rest_code_15ef610d8177407aa67a99bfda1cd9d0-5" href="baremetal-part-one.html#rest_code_15ef610d8177407aa67a99bfda1cd9d0-5"></a>----------------
+<a id="rest_code_15ef610d8177407aa67a99bfda1cd9d0-6" name="rest_code_15ef610d8177407aa67a99bfda1cd9d0-6" href="baremetal-part-one.html#rest_code_15ef610d8177407aa67a99bfda1cd9d0-6"></a>IN:
+<a id="rest_code_15ef610d8177407aa67a99bfda1cd9d0-7" name="rest_code_15ef610d8177407aa67a99bfda1cd9d0-7" href="baremetal-part-one.html#rest_code_15ef610d8177407aa67a99bfda1cd9d0-7"></a>0x40000004:  14000000  b        #0x40000004
+</pre></div>
+<p>Which is exactly what we told it to do. If you noticed <code class="docutils literal">movz</code> there
+instead of plain <code class="docutils literal">mov</code>, that's just because there's no such
+<code class="docutils literal">mov</code> instruction in Aarch64 to begin with, it's just an
+assembler mnemonic, and <code class="docutils literal">movz</code> is one of the instructions
+that replaces it.</p>
+<p>At this point, I'd make the following files:</p>
+<dl class="simple">
+<dt>run.bat</dt>
+<dd>
+<p><code class="docutils literal"><span class="pre">qemu-system-aarch64.exe</span> <span class="pre">-M</span> virt <span class="pre">-cpu</span> <span class="pre">cortex-a57</span> <span class="pre">-m</span> 256 <span class="pre">-kernel</span> kernel.elf <span class="pre">-nographic</span> <span class="pre">-serial</span> stdio</code></p>
+</dd>
+<dt>run-debug.bat</dt>
+<dd>
+<p><code class="docutils literal"><span class="pre">qemu-system-aarch64.exe</span> <span class="pre">-M</span> virt <span class="pre">-cpu</span> <span class="pre">cortex-a57</span> <span class="pre">-m</span> 256 <span class="pre">-kernel</span> kernel.elf <span class="pre">-nographic</span> <span class="pre">-serial</span> stdio <span class="pre">-d</span> in_asm</code></p>
+</dd>
+<dt>run-dtb.bat</dt>
+<dd>
+<p><code class="docutils literal"><span class="pre">qemu-system-aarch64.exe</span> <span class="pre">-M</span> virt <span class="pre">-cpu</span> <span class="pre">cortex-a57</span> <span class="pre">-m</span> 256 <span class="pre">-machine</span> dumpdtb=out.dtb</code></p>
+</dd>
+</dl>
+<p>These three files will make up most of my commandline use (other
+than, of course, calling <code class="docutils literal">make</code>), and I feel that's what you'll
+also need yourself for evaluation, debugs and dumps.</p>
+</section><section id="hello-world"><h2>Hello, World?</h2>
+<p>If you've read the <a class="reference external" href="accidental-kernel.html">previous</a> post, you'll have had it drilled into
+your head that nothing comes for free in baremetal land. There is
+no kernel and no bootloader: <em>you</em> are the kernel and bootloader
+and the kitchen sink, too. There is no BIOS to handle your syscalls
+like you'd get in x86 territory. You will not be able to do <em>anything</em>
+until you write more drivers than you really thought was possible
+in a week. Paradoxically, thus, to get anything like the legendary
+<em>Hello, World!</em>, the simplest of programs, working on bare metal,
+you'll have to first write a driver for whatever device gets us
+serial output.</p>
+<p>For the <code class="docutils literal">virt</code> board, your first output will be passed through
+the UART device <a class="footnote-reference brackets" href="baremetal-part-one.html#footnote-7" id="footnote-reference-7" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a> and since we redirected serial output
+to the console, this means that anything the UART device passes
+from the CPU will be passed to the console. This is the way
+we'll handle the first print.</p>
+<p>The UART is the simplest possible device that we can use for this
+purpose. Literally all you have to do is perform a tiny setup
+dance and it's ready to go blitting bytes to your console like it
+means business. The specific model that the <code class="docutils literal">virt</code> board implements
+is the PrimeCell UART module PL011, which is also one of the UARTs
+that are present on the Raspi3b. It's a dead simple device that
+offers both serial and queued input and output modes, but we
+have to ensure it's serial and set up for both transmission
+and reception. Like actually everything on the board, it's a
+memory mapped device, which means the MMU has conveniently remapped
+the UART's internal registers to pretend-RAM locations.</p>
+<p>To find out where the device got mapped to in memory, we need
+to go revisit the device tree and scroll quite a bit down. Remember
+we're looking for the 'PL011', and in my device tree the memory map
+is like so:</p>
+<div class="code"><pre class="code text"><a id="rest_code_1745cd29261c483fb15e2723e91d2dcf-1" name="rest_code_1745cd29261c483fb15e2723e91d2dcf-1" href="baremetal-part-one.html#rest_code_1745cd29261c483fb15e2723e91d2dcf-1"></a>pl011@9000000 {
+<a id="rest_code_1745cd29261c483fb15e2723e91d2dcf-2" name="rest_code_1745cd29261c483fb15e2723e91d2dcf-2" href="baremetal-part-one.html#rest_code_1745cd29261c483fb15e2723e91d2dcf-2"></a>        clock-names = "uartclk\0apb_pclk";
+<a id="rest_code_1745cd29261c483fb15e2723e91d2dcf-3" name="rest_code_1745cd29261c483fb15e2723e91d2dcf-3" href="baremetal-part-one.html#rest_code_1745cd29261c483fb15e2723e91d2dcf-3"></a>        clocks = &lt;0x8000 0x8000&gt;;
+<a id="rest_code_1745cd29261c483fb15e2723e91d2dcf-4" name="rest_code_1745cd29261c483fb15e2723e91d2dcf-4" href="baremetal-part-one.html#rest_code_1745cd29261c483fb15e2723e91d2dcf-4"></a>        interrupts = &lt;0x00 0x01 0x04&gt;;
+<a id="rest_code_1745cd29261c483fb15e2723e91d2dcf-5" name="rest_code_1745cd29261c483fb15e2723e91d2dcf-5" href="baremetal-part-one.html#rest_code_1745cd29261c483fb15e2723e91d2dcf-5"></a>        reg = &lt;0x00 0x9000000 0x00 0x1000&gt;;
+<a id="rest_code_1745cd29261c483fb15e2723e91d2dcf-6" name="rest_code_1745cd29261c483fb15e2723e91d2dcf-6" href="baremetal-part-one.html#rest_code_1745cd29261c483fb15e2723e91d2dcf-6"></a>        compatible = "arm,pl011\0arm,primecell";
+<a id="rest_code_1745cd29261c483fb15e2723e91d2dcf-7" name="rest_code_1745cd29261c483fb15e2723e91d2dcf-7" href="baremetal-part-one.html#rest_code_1745cd29261c483fb15e2723e91d2dcf-7"></a>};
+</pre></div>
+<p>The device tree is telling us that our UART device, called PL011,
+starts at memory location <code class="docutils literal">0x09000000</code> and is 4kb (<code class="docutils literal">0x1000</code>) long. Reads from
+and writes to this area get remapped to the device. To figure
+out how it works, we need to hit the <a class="reference external" href="https://developer.arm.com/documentation/ddi0183/f/preface?lang=en">specs</a> and slough through a <em>lot</em>
+of boring shit.</p>
+<p>I'll sum the important bits up for you:</p>
+<ol class="arabic simple">
+<li><p>PL011 UART has a controllable FIFO buffer (that we want to disable)</p></li>
+<li><p>it can generate maskable and aggregate interrupts</p></li>
+<li><p>there are signal and error bits in its status/flag registers (e.g. busy bit)</p></li>
+<li><p>you must disable the UART when reprogramming control registers <a class="footnote-reference brackets" href="baremetal-part-one.html#footnote-8" id="footnote-reference-8" role="doc-noteref"><span class="fn-bracket">[</span>8<span class="fn-bracket">]</span></a></p></li>
+<li><p>some memory areas are reserved, some are turbo reserved</p></li>
+<li><p>the forbidden areas are at <code class="docutils literal">0x008</code>—<code class="docutils literal">0x014</code>, and at <code class="docutils literal">0x1c</code>; writing to them bricks the device</p></li>
+<li><p>the UART <em>should</em> be enabled manually, because you can't guarantee it's enabled on reset</p></li>
+<li><p>control registers should also be set manually because their values can be unpredictable</p></li>
+</ol>
+<p>We don't actually care about most of the functionality of
+this device and some of it is actively detrimental to our
+needs, so we have to deactivate them just in case.</p>
+<p>The relevant registers of the PL011 UART:</p>
+<div class="bs-example">
+  <table style="width:50%" class="table table-striped table-bordered table-hover">
+<thead><tr>
+<th>Register</th>
+        <th>Offset</th>
+      </tr></thead>
+<tbody>
+<tr>
+<td><b>Data</b></td>
+        <td>+0x0</td>
+      </tr>
+<tr>
+<td><b>Flags</b></td>
+        <td>+0x18</td>
+      </tr>
+<tr>
+<td><b>Control</b></td>
+        <td>+0x30</td>
+      </tr>
+<tr>
+<td><b>FIFO Interrupts</b></td>
+        <td>+0x34</td>
+      </tr>
+<tr>
+<td><b>Interrupt clear</b></td>
+        <td>+0x44</td>
+      </tr>
+</tbody>
+</table>
+<p>With this in mind, we start by clearing the control register,
+then setting the transmit mode, enabling the UART,
+clearing all interrupts and disabling FIFO interrupts. Even though
+the PL011 schematics say that, on reset, the value in the control
+register ix <code class="docutils literal">0x0300</code> (p47 of the schematic PDF), we do this
+for extra safety reasons. Never hurts to be safe. The code we'll
+be running:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-1" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-1" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-1"></a><span class="na">.section</span><span class="w"> </span><span class="no">.text.startup</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-2" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-2" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-2"></a><span class="na">.global</span><span class="w"> </span><span class="no">_Reset</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-3" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-3" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-3"></a><span class="nl">_Reset:</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-4" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-4" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-4"></a><span class="w">    </span><span class="nf">b</span><span class="w"> </span><span class="mi">1</span><span class="no">f</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-5" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-5" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-5"></a><span class="w">    </span><span class="na">.skip</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-6" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-6" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-6"></a>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-7" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-7" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-7"></a><span class="c1">//      UART_BASE: .word 0x09000000</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-8" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-8" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-8"></a><span class="c1">//      UART_DATA: .byte 0x00</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-9" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-9" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-9"></a><span class="c1">//      UART_FLAG: .byte 0x18</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-10" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-10" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-10"></a><span class="c1">//      UART_CNTL: .byte 0x30</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-11" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-11" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-11"></a><span class="c1">//      UART_FIFO: .byte 0x34</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-12" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-12" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-12"></a><span class="c1">//      UART_INTC: .byte 0x44</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-13" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-13" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-13"></a>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-14" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-14" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-14"></a><span class="na">.section</span><span class="w"> </span><span class="no">.text</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-15" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-15" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-15"></a><span class="err">1:</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-16" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-16" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-16"></a><span class="w">        </span><span class="nf">ldr</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="err">=</span><span class="mi">0x09000030</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-17" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-17" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-17"></a><span class="w">        </span><span class="c1">// we're not actually loading these from memory</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-18" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-18" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-18"></a><span class="w">        </span><span class="c1">// though we probably should; for now we just want output</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-19" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-19" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-19"></a>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-20" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-20" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-20"></a><span class="w">        </span><span class="nf">mov</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x1</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-21" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-21" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-21"></a><span class="w">        </span><span class="nf">str</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w">            </span><span class="c1">// set bit 0 = enable</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-22" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-22" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-22"></a><span class="w">        </span><span class="nf">mov</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x101</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-23" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-23" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-23"></a><span class="w">        </span><span class="nf">str</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-24" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-24" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-24"></a>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-25" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-25" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-25"></a><span class="w">        </span><span class="nf">add</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x4</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-26" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-26" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-26"></a><span class="w">        </span><span class="nf">mov</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x03ff</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-27" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-27" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-27"></a><span class="w">        </span><span class="nf">str</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w">            </span><span class="c1">// disable FIFO interrupts</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-28" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-28" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-28"></a>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-29" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-29" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-29"></a><span class="w">        </span><span class="nf">add</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x10</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-30" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-30" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-30"></a><span class="w">        </span><span class="nf">str</span><span class="w"> </span><span class="no">xzr</span><span class="p">,[</span><span class="no">x0</span><span class="p">]</span><span class="w">            </span><span class="c1">// clear all interrupts</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-31" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-31" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-31"></a>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-32" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-32" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-32"></a><span class="w">        </span><span class="nf">sub</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x14</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-33" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-33" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-33"></a><span class="w">        </span><span class="nf">mov</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x301</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-34" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-34" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-34"></a><span class="w">        </span><span class="nf">str</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w">            </span><span class="c1">// and finally enable the receive flag</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-35" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-35" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-35"></a>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-36" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-36" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-36"></a><span class="w">        </span><span class="c1">// now the UART should be barebones functional</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-37" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-37" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-37"></a><span class="w">        </span><span class="c1">// we can test it by blasting its memory location w bytes</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-38" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-38" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-38"></a>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-39" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-39" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-39"></a><span class="w">        </span><span class="nf">mov</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x48</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-40" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-40" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-40"></a>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-41" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-41" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-41"></a><span class="w">        </span><span class="nf">sub</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x44</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-42" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-42" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-42"></a><span class="w">        </span><span class="err">2:</span><span class="w"></span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-43" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-43" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-43"></a><span class="w">        </span><span class="nf">str</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w">            </span><span class="c1">// and we see if it works!</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-44" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-44" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-44"></a><span class="w">        </span><span class="c1">// you should be seeing a wall of H on your console right about now</span>
+<a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-45" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-45" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-45"></a><span class="w">        </span><span class="nf">b</span><span class="w"> </span><span class="mi">2</span><span class="no">b</span><span class="w"></span>
+</pre></div>
+<p>And a whole lot of bullshit later, you've got <em>single character</em> output
+to the console, repeatedly! It's probably still quite buggy, you might
+need to hit a key to get output to display or whatever if it jams, but we'll
+handle that later when we start writing actual printing procedures down the line.</p>
+
+<section id="what-s-next"><h2>What's next?</h2>
+<p>With the UART enabled, the next part should be writing actual print
+routines, figuring out how we're gonna call procedures, and getting
+<em>input</em> into our machine (interactivity woo).</p>
+<hr class="docutils">
+<aside class="footnote brackets" id="footnote-1" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-one.html#footnote-reference-1">1</a><span class="fn-bracket">]</span></span>
+<p>You don't need to install the 32-bit Arm
+emulators, since the Aarch64 emu also covers the 32-bit instruction
+set, and the Thumb set, if you ever feel like using that. We won't
+be using it, though it's a totally interesting target on its own;
+did you know that the 32-bit Arm ISA includes conditional instructions
+so that you don't even have to do any jumps in your code at all?
+You can just write <code class="docutils literal">addle</code> and your <code class="docutils literal">add</code> will execute only
+if the condition flag is set for less-than-or-equal. How neat! This
+didn't transfer over into Aarch64, sadly, because they doubled
+the amount of registers and did all sorts of other bonus wacky shit,
+but the instructions remained 32 bits wide.</p>
+</aside><aside class="footnote brackets" id="footnote-2" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-one.html#footnote-reference-2">2</a><span class="fn-bracket">]</span></span>
+<p>Specifically, the exact Win build I'm using is
+<code class="docutils literal">QEMU emulator version 7.0.0 <span class="pre">(v7.0.0-11902-g1d935f4a02-dirty)</span></code> if
+that matters to you. You can check your version by running the
+executable with the commandline option <code class="docutils literal"><span class="pre">--version</span></code> fwiw.</p>
+</aside><aside class="footnote brackets" id="footnote-3" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-one.html#footnote-reference-3">3</a><span class="fn-bracket">]</span></span>
+<p>Obligatory reading: <a class="reference external" href="https://wiki.osdev.org/Target_Triplet">https://wiki.osdev.org/Target_Triplet</a></p>
+</aside><aside class="footnote brackets" id="footnote-4" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-one.html#footnote-reference-4">4</a><span class="fn-bracket">]</span></span>
+<p>I'm using <code class="docutils literal">GCC 11.2</code> for this, specifically
+the <code class="docutils literal"><span class="pre">gcc-arm-11.2-2022.02-mingw-w64-i686-aarch64-none-elf</span></code>
+toolchain. Any reasonably modern GCC should work, I think.</p>
+</aside><aside class="footnote brackets" id="footnote-5" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-one.html#footnote-reference-5">5</a><span class="fn-bracket">]</span></span>
+<p>From <a class="reference external" href="https://qemu-project.gitlab.io/qemu/system/arm/virt.html">https://qemu-project.gitlab.io/qemu/system/arm/virt.html</a></p>
+</aside><aside class="footnote brackets" id="footnote-6" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-one.html#footnote-reference-6">6</a><span class="fn-bracket">]</span></span>
+<p>If you want to read more about the CPUs that the <code class="docutils literal">virt</code> board
+supports, as well as all the intricacies of the board itself, go
+visit <a class="reference external" href="https://www.qemu.org/docs/master/system/arm/virt.html">https://www.qemu.org/docs/master/system/arm/virt.html</a>; but note
+that either the docs or the QEMU application itself are lying somewhere
+along the line. If you pass the options  <code class="docutils literal"><span class="pre">-M</span> virt <span class="pre">-cpu</span> help</code> to the
+QEMU application, you'll find that the app is reporting support for
+processors like the old Arm Cortex-A7, the tiny Arm Cortex-M0 and
+Cortex-R5, and actually decades old <code class="docutils literal">sa1110</code> aka Intel's late-90ies
+<em>StrongARM</em> microprocessors implementing the motherfucking Armv4 ISA,
+as in the thing powering the fucking <em>Game Boy Advance</em>. I don't know
+whether these are <em>actually</em> supported, if the docs are outdated,
+or whatever other explanation there is. For 'safety' purposes I'd
+much rather stick to things like the Cortex-A53, which I've been using
+to run all this code.</p>
+</aside><aside class="footnote brackets" id="footnote-7" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-one.html#footnote-reference-7">7</a><span class="fn-bracket">]</span></span>
+<p>Meaning the 'Universal asynchronous receiver-transmitter' device</p>
+</aside><aside class="footnote brackets" id="footnote-8" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-one.html#footnote-reference-8">8</a><span class="fn-bracket">]</span></span>
+<p>Fun fact I've found actual honest to God Google code that violates
+this requirement and reprograms the UART on the fly, going against the
+obligation in the specs. See here:
+<a class="reference external" href="https://github.com/google/early-bringup-tool/blob/main/examples/qemu-armv8A-64/platform/uart/uart.c">https://github.com/google/early-bringup-tool/blob/main/examples/qemu-armv8A-64/platform/uart/uart.c</a></p>
+</aside></section>
+</div></section>
+</div>
+    <aside class="postpromonav"><nav><ul itemprop="keywords" class="tags">
+<li><a class="tag p-category" href="../categories/aarch64.html" rel="tag">aarch64</a></li>
+            <li><a class="tag p-category" href="../categories/armasm.html" rel="tag">armasm</a></li>
+            <li><a class="tag p-category" href="../categories/asm.html" rel="tag">asm</a></li>
+            <li><a class="tag p-category" href="../categories/hello-world.html" rel="tag">hello world</a></li>
+            <li><a class="tag p-category" href="../categories/programming.html" rel="tag">programming</a></li>
+        </ul>
+<ul class="pager hidden-print">
+<li class="previous">
+                <a href="hello-world.html" rel="prev" title="hello world">Предыдущая запись</a>
+            </li>
+        </ul></nav></aside></article><!--End of body content--><footer id="footer">
+            Contents © 2022         <a href="mailto:whocares0@gmail.com">enn</a> - Powered by         <a href="https://getnikola.com" rel="nofollow">Nikola</a>         
+            
+            
+        </footer>
+</div>
+</div>
+
+
+        <script src="../../assets/js/all-nocdn.js"></script><script>
+    baguetteBox.run('div#content', {
+        ignoreClass: 'islink',
+        captions: function(element){var i=element.getElementsByTagName('img')[0];return i===undefined?'':i.alt;}});
+    </script>
+</body>
+</html>
