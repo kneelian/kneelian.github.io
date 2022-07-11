@@ -435,7 +435,7 @@ needs, so we have to deactivate them just in case.</p>
 then setting the transmit mode, enabling the UART,
 clearing all interrupts and disabling FIFO interrupts. Even though
 the PL011 schematics say that, on reset, the value in the control
-register ix <code class="docutils literal">0x0300</code> (p47 of the schematic PDF), we do this
+register is <code class="docutils literal">0x0300</code> (p47 of the schematic PDF), we do this
 for extra safety reasons. Never hurts to be safe. The code we'll
 be running:</p>
 <div class="code"><pre class="code asm"><a id="rest_code_d854d7e5330e458b967f31f8e891a1bb-1" name="rest_code_d854d7e5330e458b967f31f8e891a1bb-1" href="baremetal-part-one.html#rest_code_d854d7e5330e458b967f31f8e891a1bb-1"></a><span class="na">.section</span><span class="w"> </span><span class="no">.text.startup</span><span class="w"></span>
