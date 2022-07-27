@@ -7,19 +7,19 @@
                         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
  <url>
   <loc>https://example.com/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/2022/</loc>
-  <lastmod>2022-07-07T19:11:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/archive.html</loc>
-  <lastmod>2022-07-11T01:53:00Z</lastmod>
+  <lastmod>2022-07-26T21:23:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/authors/</loc>
-  <lastmod>2022-07-07T23:16:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/authors/enn.html</loc>
@@ -27,43 +27,43 @@
  </url>
  <url>
   <loc>https://example.com/categories/</loc>
-  <lastmod>2022-07-11T01:53:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/categories/aarch64.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/categories/armasm.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/categories/asm.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/categories/hello-world.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/categories/programming.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/2022/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/archive.html</loc>
-  <lastmod>2022-07-07T23:08:00Z</lastmod>
+  <lastmod>2022-07-11T01:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/authors/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/authors/enn.html</loc>
@@ -71,35 +71,43 @@
  </url>
  <url>
   <loc>https://example.com/git/categories/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/categories/aarch64.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/categories/armasm.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/categories/asm.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/git/categories/hello-world.html</loc>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/categories/programming.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/listings/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/listings/__pycache__/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/listings/hello.py.html</loc>
   <lastmod>2022-07-07T23:08:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/git/pages/bootstrap-demo.html</loc>
+  <lastmod>2022-07-11T02:51:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/pages/contact.html</loc>
@@ -107,7 +115,11 @@
  </url>
  <url>
   <loc>https://example.com/git/posts/accidental-kernel.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-11T01:53:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/git/posts/baremetal-part-one.html</loc>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/posts/hello-world.html</loc>
@@ -115,64 +127,156 @@
  </url>
  <url>
   <loc>https://example.com/git/ru/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/ru/2022/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/ru/archive.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-11T01:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/ru/categories/</loc>
-  <lastmod>2022-07-07T23:18:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/git/ru/categories/aarch64.html</loc>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/git/ru/categories/armasm.html</loc>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/git/ru/categories/asm.html</loc>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/git/ru/categories/hello-world.html</loc>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/ru/categories/hello.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-11T01:52:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/ru/categories/intro.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-11T01:52:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/git/ru/categories/programming.html</loc>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/git/ru/pages/bootstrap-demo.html</loc>
+  <lastmod>2022-07-11T02:51:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/git/ru/pages/contact.html</loc>
   <lastmod>2022-07-07T23:17:00Z</lastmod>
  </url>
  <url>
+  <loc>https://example.com/git/ru/posts/baremetal-part-one.html</loc>
+  <lastmod>2022-07-11T04:14:00Z</lastmod>
+ </url>
+ <url>
   <loc>https://example.com/git/ru/posts/hello-world.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-11T01:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/listings/</loc>
-  <lastmod>2022-07-07T19:09:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/listings/__pycache__/</loc>
-  <lastmod>2022-07-07T19:09:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/listings/hello.py.html</loc>
-  <lastmod>2022-07-07T23:08:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/pages/bootstrap-demo.html</loc>
-  <lastmod>2022-07-11T02:51:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/pages/contact.html</loc>
-  <lastmod>2022-07-07T23:08:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/about-nikola.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/bootstrap-demo.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/charts.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/creating-a-theme.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/dr-nikolas-vendetta.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/extending.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/handbook.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/internals.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/listings-demo.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/path-handlers.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/quickref.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/quickstart.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/social_buttons.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/pages/pages/theming.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/posts/accidental-kernel.html</loc>
-  <lastmod>2022-07-11T01:53:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
   <xhtml:link rel="alternate" hreflang="ru" href="https://example.com/ru/posts/hello-world.html" />
  </url>
  <url>
   <loc>https://example.com/posts/baremetal-part-one.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/posts/baremetal-part-three.html</loc>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
+ </url>
+ <url>
+  <loc>https://example.com/posts/baremetal-part-two.html</loc>
+  <lastmod>2022-07-26T22:57:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/posts/hello-world.html</loc>
@@ -180,66 +284,146 @@
  </url>
  <url>
   <loc>https://example.com/ru/</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/2022/</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/archive.html</loc>
-  <lastmod>2022-07-11T01:53:00Z</lastmod>
+  <lastmod>2022-07-26T21:23:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/categories/</loc>
-  <lastmod>2022-07-11T01:53:00Z</lastmod>
+  <lastmod>2022-07-13T22:53:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/categories/aarch64.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/categories/armasm.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/categories/asm.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/categories/hello-world.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/categories/hello.html</loc>
-  <lastmod>2022-07-11T01:52:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/categories/intro.html</loc>
-  <lastmod>2022-07-11T01:52:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/categories/programming.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
  </url>
  <url>
   <loc>https://example.com/ru/pages/bootstrap-demo.html</loc>
-  <lastmod>2022-07-11T02:51:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
   <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/bootstrap-demo.html" />
  </url>
  <url>
   <loc>https://example.com/ru/pages/contact.html</loc>
-  <lastmod>2022-07-07T23:17:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
   <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/contact.html" />
  </url>
  <url>
+  <loc>https://example.com/ru/pages/pages/about-nikola.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/about-nikola.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/bootstrap-demo.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/bootstrap-demo.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/charts.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/charts.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/creating-a-theme.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/creating-a-theme.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/dr-nikolas-vendetta.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/dr-nikolas-vendetta.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/extending.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/extending.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/handbook.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/handbook.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/internals.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/internals.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/listings-demo.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/listings-demo.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/path-handlers.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/path-handlers.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/quickref.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/quickref.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/quickstart.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/quickstart.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/social_buttons.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/social_buttons.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/pages/pages/theming.html</loc>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/pages/pages/theming.html" />
+ </url>
+ <url>
   <loc>https://example.com/ru/posts/baremetal-part-one.html</loc>
-  <lastmod>2022-07-11T04:14:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
   <xhtml:link rel="alternate" hreflang="en" href="https://example.com/posts/baremetal-part-one.html" />
  </url>
  <url>
+  <loc>https://example.com/ru/posts/baremetal-part-three.html</loc>
+  <lastmod>2022-07-26T23:38:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/posts/baremetal-part-three.html" />
+ </url>
+ <url>
+  <loc>https://example.com/ru/posts/baremetal-part-two.html</loc>
+  <lastmod>2022-07-26T22:57:00Z</lastmod>
+  <xhtml:link rel="alternate" hreflang="en" href="https://example.com/posts/baremetal-part-two.html" />
+ </url>
+ <url>
   <loc>https://example.com/ru/posts/hello-world.html</loc>
-  <lastmod>2022-07-11T01:53:00Z</lastmod>
+  <lastmod>2022-07-25T21:40:00Z</lastmod>
   <xhtml:link rel="alternate" hreflang="en" href="https://example.com/posts/accidental-kernel.html" />
  </url>
 </urlset>
