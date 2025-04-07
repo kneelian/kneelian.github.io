@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns# article: http://ogp.me/ns/article#
+" lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thoughts about Memory Management on Bare Metal, pt. 1 | enn-devblog</title>
+<link href="../../assets/css/all-nocdn.css" rel="stylesheet" type="text/css">
+<meta name="theme-color" content="#5670d4">
+<meta name="generator" content="Nikola (getnikola.com)">
+<link rel="canonical" href="https://example.com/ru/posts/thoughts-about-memory-management-on-bare-metal-pt-1.html">
+<!--[if lt IE 9]><script src="../../../assets/js/html5.js"></script><![endif]--><meta name="author" content="enn">
+<link rel="prev" href="kernel-configuration-pt-one.html" title="Kernel Configuration, Part One" type="text/html">
+<meta property="og:site_name" content="enn-devblog">
+<meta property="og:title" content="Thoughts about Memory Management on Bare Metal, pt. 1">
+<meta property="og:url" content="https://example.com/ru/posts/thoughts-about-memory-management-on-bare-metal-pt-1.html">
+<meta property="og:description" content="Prelude
+Recently I've been toying with some weird, cheap SBCs that offer
+a lot for way too little money. You can actually get a device with
+a pressure-sensitive 320x240 screen, 4M flash and 512K RAM f">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2025-04-07T16:10:30+02:00">
+<meta property="article:tag" content="baremetal">
+<meta property="article:tag" content="c">
+<meta property="article:tag" content="c++">
+<meta property="article:tag" content="cyd">
+<meta property="article:tag" content="esp32">
+<meta property="article:tag" content="programming">
+<link rel="alternate" hreflang="en" href="../../posts/thoughts-about-memory-management-on-bare-metal-pt-1.html">
+</head>
+<body>
+<a href="#content" class="sr-only sr-only-focusable">Перейти к главному содержимому</a>
+
+<!-- Menubar -->
+
+<nav class="navbar navbar-expand-md static-top mb-4
+navbar-dark
+bg-dark
+"><div class="container">
+<!-- This keeps the margins nice -->
+        <a class="navbar-brand" href="../">
+
+            <span id="blog-title">enn-devblog</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#bs-navbar" aria-controls="bs-navbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="bs-navbar">
+            <ul class="navbar-nav mr-auto">
+<li class="nav-item dropdown">
+<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">The Blog</a>
+            <div class="dropdown-menu">
+                    <a href="../../archive.html/" class="dropdown-item">Archived Posts</a>
+                    <a href="../../posts/" class="dropdown-item">All Posts</a>
+            </div>
+            </li>
+<li class="nav-item dropdown">
+<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">About</a>
+            <div class="dropdown-menu">
+                    <a href="../../about-me/" class="dropdown-item">About me</a>
+            </div>
+                </li>
+<li class="nav-item">
+<a href="../../categories/index.html" class="nav-link">Tags</a>
+                </li>
+<li class="nav-item">
+<a href="../../pages/contact.html" class="nav-link">Contact</a>
+
+                
+            </li>
+</ul>
+<ul class="navbar-nav navbar-right">
+<li>
+            </li>
+<li class="nav-item"><a href="../../" rel="alternate" hreflang="en" class="nav-link">English</a></li>
+
+                
+                    
+    
+    <li class="nav-item">
+    <a href="thoughts-about-memory-management-on-bare-metal-pt-1.rst" id="sourcelink" class="nav-link">Источник</a>
+    </li>
+
+
+                
+            </ul>
+</div>
+<!-- /.navbar-collapse -->
+    </div>
+<!-- /.container -->
+</nav><!-- End of Menubar --><div class="container" id="content" role="main">
+    <div class="body-content">
+        <!--Body content-->
+        
+        
+        
+<article class="post-text h-entry hentry postpage" itemscope="itemscope" itemtype="http://schema.org/Article"><header><h1 class="p-name entry-title" itemprop="headline name"><a href="#" class="u-url">Thoughts about Memory Management on Bare Metal, pt. 1</a></h1>
+
+        <div class="metadata">
+            <p class="byline author vcard p-author h-card"><span class="byline-name fn p-name" itemprop="author">
+                    enn
+            </span></p>
+            <p class="dateline">
+            <a href="#" rel="bookmark">
+            <time class="published dt-published" datetime="2025-04-07T16:10:30+02:00" itemprop="datePublished" title="2025-04-07 16:10">2025-04-07 16:10</time></a>
+            </p>
+            
+        <p class="sourceline"><a href="thoughts-about-memory-management-on-bare-metal-pt-1.rst" class="sourcelink">Источник</a></p>
+
+        </div>
+        
+
+    </header><div class="e-content entry-content" itemprop="articleBody text">
+    <section id="prelude"><h2>Prelude</h2>
+<p>Recently I've been toying with some weird, cheap SBCs that offer
+a lot for way too little money. You can actually get a device with
+a pressure-sensitive 320x240 screen, 4M flash and 512K RAM for
+under ten bucks <img alt="Moggers" src="../emoji/moggers.png" style="width: 32px;"> so obviously what I did was that I did
+get one of those and decided to see what I could do with it.</p>
+<p>Enter the <strong>Cheap Yellow Display</strong> (or CYD for short), name courtesy of
+<a class="reference external" href="https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/tree/main">Brian Lough</a>,
+that's got one of those fancy Espressiv IoT SOCs, with a Bluetooth stack
+and WiFi out of the box, Arduino integration, two cores (one of which
+will run the RTOS in an Arduino setup by default, but you can hijack it
+and run other code on it), easy interrupt registering (with per-core
+control to boot), a decent amount of GPIO pins broken out, and a
+resistive LCD touchscreen that's trivial to program for.</p>
+<p>Its weakest points are its 520K RAM and 4M flash. This is probably
+the one thing that can limit its usability in general, and there are other
+ESP32 chips and boards with different configs (8M and 16M flash variants exist,
+and many boards also integrate an extra 4/8M of PSRAM, absent on the CYD),
+but this is already more than enough for a <em>lot</em> of things you'd want to do.
+If you're crazy enough, <a class="reference external" href="https://community.element14.com/challenges-projects/element14-presents/project-videos/w/documents/28339/episode-623-how-to-run-linux-on-an-esp32">you can even run Linux on it</a>
+(though the device in the link has 8M of PSRAM, you can probably trim it and make a godawful,
+pained, miserable Linux with 512K as well, and it boots just "fine"),
+but we're not going down this route because that just feels like hubris:
+yes, the old UNIXes did run on hardware with 64-256K RAM, but that was more
+than 50 years ago and those machines ate around 9 amps of current at
+230V (or at least that's what I'm getting for the PDP-11/20 power
+supply); the CYD works at a steady 3.3V/115mA, and is a quintillion times
+faster <a class="footnote-reference brackets" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-1" id="footnote-reference-1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> with a much saner work environment and tools that don't
+make you want to immediately <a class="footnote-reference brackets" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-2" id="footnote-reference-2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> kill yourself, and you can replace
+it with basically infinite ease if one dies. Try replacing a PDP-11
+on a budget.</p>
+<p>Some good things about the lack of PSRAM, though, is that it
+<strike> teaches you to use what you have and not be a pussy </strike>​ has
+much slower access times and as such you'll want to fall back on fast
+internal RAM anyhow; PSRAM would be good for memory you'd access intermittently
+rather than hit every cycle. Or maybe this is all just cope. In any case,
+520K RAM it is.</p>
+<p>It's also a bit more muddied than that: the ESP32 divides its memory space
+into two blocks, DRAM for data and IRAM for instructions. These are
+asymmetric: DRAM covers some 320K and IRAM covers 200K. <a class="reference external" href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32s2/api-guides/memory-types.html">The docs</a> helpfully
+state that "[a]ny internal SRAM which is not used for Instruction RAM will
+be made available as DRAM (Data RAM) for static data and dynamic allocation (heap)",
+which means that if we need &gt;328K data we can claw it back from IRAM, which
+helps our case a bit. The ability to execute things from RAM can also help with
+hot-loading code from external memory (I've looked a lot into this and concluded
+that just writing a parser for external code and then interpreting it is much,
+<em>much</em> less painful than hotloading code into IRAM, and we're currently in the middle
+of me musing how to implement that properly), so you can actually just drive a slim
+OS in RAM and load programs off an SD card, and <a class="reference external" href="https://tactility.one/">one project</a> does
+just that <a class="footnote-reference brackets" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-3" id="footnote-reference-3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a> with quite a bit of charm and polish to it.</p>
+<p>The thing is, the ESP32 is powerful enough to run a RTOS (in this case it
+bundles FreeRTOS <a class="footnote-reference brackets" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-4" id="footnote-reference-4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a> by default and uses it for a bunch of shit), and this
+RTOS reserves some memory for itself, and the WiFi and BT stacks can also
+eat into this memory for their own purposes (this eats up a whole 64K of RAM
+in case you're wondering). A default setup with Arduino
+enabling the use of the <code class="docutils literal">Serial</code> library without any screen code
+has the non-user code reserve 20080 bytes for global variables,
+"leaving 307600 bytes for local variables". The astute reader will see
+that this sums up to 327680B, i.e. 320K of RAM. A decent amount
+of this is going to the RTOS task scheduler and internal states, and
+a bit is going on facilitating dynamic memory allocation. <a class="reference external" href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32s2/api-guides/memory-types.html">The docs</a> also
+tell us that there's a technical limitation to how much we can allocate in
+what way: we're limited to 160K static allocation, and the remaining 160K
+"can only be allocated at runtime as heap".</p>
+<p>Loss to overhead isn't that bad, though, truth be told. A more full-featured
+programme with a screen and touch driver and SD card code for both reading
+and writing takes up 22560B, just under 2.5K more. This is not that awful
+considering how much RAM we have, but it'd be proper deadly on a smaller
+device like one of the actual Arduinos that <em>have</em> 2.5K RAM in total.</p>
+<p>But this all also means that, if we want to use a lot of RAM in our thing,
+we have to dynamically allocate more when we start touching the &gt;128K zone.
+Dynamic memory allocation on microcontrollers <em>sucks</em>, though, and you'll
+fragment the memory space in basically no time and won't be able to recover
+from it because there's no actual OS to bail you out. People die when an MCU
+upredictably returns <code class="docutils literal">nullptr</code> from a <code class="docutils literal">malloc()</code> call.</p>
+<p>One of the solutions is to just allocate everything you can statically
+ahead of time, and then 'dynamically' allocate during startup and then
+<em>never clean up or call</em> <code class="docutils literal">free()</code> <em>again</em>. The fact that <code class="docutils literal">malloc()</code> can
+only give us blocks up to the size of the largest contiguous memory
+block and the fact that we're not doing any sophisticated memory mapping
+on the fly, this really just means figuring out how big our maximum
+memory blocks are and then allocating up to their size and then writing
+management code ourselves on top of that. Several tactics for this
+include <a class="reference external" href="https://en.wikipedia.org/wiki/Memory_pool">memory pools</a> and <a class="reference external" href="https://en.wikipedia.org/wiki/Slab_allocation">slab allocation</a>, both of which are
+pretty neat ideas, and we'll be tapping into their concepts for our
+purposes. Let's dive in.</p>
+</section><section id="diving-in"><h2>Diving In</h2>
+<p>There's something charming about the CYD. Like I've mentioned above, it's
+a dual-core system with 520K RAM and whatnot. The ISA the chips are running
+can be called <em>unusual</em>: it's called Xtensa and was developed by the IP company
+Tensilica. The exact architecture here is the Xtensa LX6 configured to use
+32-bit transfers/data buses, and is little-endian. The CYD has a core <em>without</em> vector
+extensions, but there are Tensilica cores with SIMD (the ESP32-S3 is one
+such example, with some <a class="reference external" href="https://bitbanksoftware.blogspot.com/2024/01/surprise-esp32-s3-has-few-simd.html">weird SIMD features</a> that are genuine nice-to-haves).
+The chip offers some good features, a large number of pins broken out,
+several serials, JTAG, all the good stuff. The CYD cuts into this a decent
+bit by integrating an SD card module, multicoloured LED, a screen, a touch
+interface for that screen, a micro-USB port, and a buzzer/speaker
+two-wire/mono plug. The result is a still-decent package with 3 clusters of
+4 pins exposed, one of which has a 3.3V line, and one of which doubles
+as a serial port.</p>
+<p>These memory investigations are basically me building up some infrastructure
+to support an interpreted programming language running behind the scenes on
+the CYD, as a sort of native BASIC-like. There is no practical use to this,
+it's just me playing with my toys.</p>
+<p>Given that the system has (at least) 320K of SRAM dedicated to data,
+this is obviously a good place to start. As no more than 160K can be
+statically allocated, and a decent amount of it will be eaten up
+by libraries and other code, it becomes "natural" to me to think about
+the CYD's RAM in terms of 64K blocks. This might be a problem <a class="footnote-reference brackets" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-5" id="footnote-reference-5" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a> later,
+but currently it seems fine enough.</p>
+<p>The screen itself will also want at least 75K of RAM (320 * 240 = 76800, so
+if every pixel is one byte that's a clean 75K; though colour performance
+might suffer obviously), and possibly more (the screen has 16-bit colour, so
+150K RAM, eating up almost half of DRAM in one go). If I buffer the screen and
+expose it as a memory zone, that is; this isn't required in any way, and is anyway not
+something I care about right now.</p>
+<p>In any case, it would be <em>prudent</em> to allocate as much memory as possible for
+the application, then manage it manually later, writing an own allocator and deallocator.
+It's also perfectly possible to write a kind of "memory mapper" that would provide
+a flat contiguous memory space to user code obfuscating the bullshit underneath. One
+pseudocode example of such a a remapper would be:</p>
+<div class="code"><pre class="code cpp"><a id="rest_code_3248d05c75f54f518e8bd3c43944a826-1" name="rest_code_3248d05c75f54f518e8bd3c43944a826-1" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span><span class="cp"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-2" name="rest_code_3248d05c75f54f518e8bd3c43944a826-2" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-2"></a>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-3" name="rest_code_3248d05c75f54f518e8bd3c43944a826-3" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-3"></a><span class="k">struct</span><span class="w"> </span><span class="nc">memory</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-4" name="rest_code_3248d05c75f54f518e8bd3c43944a826-4" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-4"></a><span class="p">{</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-5" name="rest_code_3248d05c75f54f518e8bd3c43944a826-5" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-5"></a><span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1024</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="o">&gt;</span><span class="w"> </span><span class="n">contents</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-6" name="rest_code_3248d05c75f54f518e8bd3c43944a826-6" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-6"></a>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-7" name="rest_code_3248d05c75f54f518e8bd3c43944a826-7" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-7"></a><span class="w">        </span><span class="n">memory</span><span class="p">()</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-8" name="rest_code_3248d05c75f54f518e8bd3c43944a826-8" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-8"></a><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-9" name="rest_code_3248d05c75f54f518e8bd3c43944a826-9" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-9"></a><span class="w">                </span><span class="k">for</span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">contents</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-10" name="rest_code_3248d05c75f54f518e8bd3c43944a826-10" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-10"></a><span class="w">                        </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="p">,</span><span class="w"> </span><span class="mi">64</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1024</span><span class="o">&gt;</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-11" name="rest_code_3248d05c75f54f518e8bd3c43944a826-11" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-11"></a><span class="w">        </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-12" name="rest_code_3248d05c75f54f518e8bd3c43944a826-12" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-12"></a><span class="w">        </span><span class="o">~</span><span class="n">memory</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">delete</span><span class="p">;</span><span class="w"> </span><span class="c1">// must be static</span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-13" name="rest_code_3248d05c75f54f518e8bd3c43944a826-13" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-13"></a>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-14" name="rest_code_3248d05c75f54f518e8bd3c43944a826-14" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-14"></a><span class="w">        </span><span class="kt">uint8_t</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">address</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-15" name="rest_code_3248d05c75f54f518e8bd3c43944a826-15" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-15"></a><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-16" name="rest_code_3248d05c75f54f518e8bd3c43944a826-16" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-16"></a><span class="w">                </span><span class="kt">uint8_t</span><span class="w">  </span><span class="n">page</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">address</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xff</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-17" name="rest_code_3248d05c75f54f518e8bd3c43944a826-17" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-17"></a><span class="w">                </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">cell</span><span class="w"> </span><span class="o">=</span><span class="w">  </span><span class="n">address</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xff'ff</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-18" name="rest_code_3248d05c75f54f518e8bd3c43944a826-18" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-18"></a>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-19" name="rest_code_3248d05c75f54f518e8bd3c43944a826-19" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-19"></a><span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="n">contents</span><span class="p">[</span><span class="n">page</span><span class="o">%</span><span class="mi">4</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">at</span><span class="p">(</span><span class="n">cell</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-20" name="rest_code_3248d05c75f54f518e8bd3c43944a826-20" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-20"></a><span class="w">        </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-21" name="rest_code_3248d05c75f54f518e8bd3c43944a826-21" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-21"></a><span class="w">        </span><span class="kt">void</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">address</span><span class="p">,</span><span class="w"> </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">payload</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-22" name="rest_code_3248d05c75f54f518e8bd3c43944a826-22" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-22"></a><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-23" name="rest_code_3248d05c75f54f518e8bd3c43944a826-23" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-23"></a><span class="w">                </span><span class="kt">uint8_t</span><span class="w">  </span><span class="n">page</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">address</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xff</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-24" name="rest_code_3248d05c75f54f518e8bd3c43944a826-24" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-24"></a><span class="w">                </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">cell</span><span class="w"> </span><span class="o">=</span><span class="w">  </span><span class="n">address</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xff'ff</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-25" name="rest_code_3248d05c75f54f518e8bd3c43944a826-25" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-25"></a>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-26" name="rest_code_3248d05c75f54f518e8bd3c43944a826-26" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-26"></a><span class="w">                </span><span class="n">contents</span><span class="p">[</span><span class="n">page</span><span class="o">%</span><span class="mi">4</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">at</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">payload</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-27" name="rest_code_3248d05c75f54f518e8bd3c43944a826-27" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-27"></a><span class="w">        </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_3248d05c75f54f518e8bd3c43944a826-28" name="rest_code_3248d05c75f54f518e8bd3c43944a826-28" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_3248d05c75f54f518e8bd3c43944a826-28"></a><span class="p">};</span><span class="w"></span>
+</pre></div>
+<p>This kind of structure has sub-32 bytes of internal state, manages pages of 64K memory,
+and translates accesses in a perceived continuous space to accesses in a discontinuous space.
+Of course, this kind of code is unacceptable for embedded because using the STL in the first
+place is what is called "rough luck", but it's not the worst thing ever, and the code scaffold
+is good enough. This is downright primitive, but it serves the purpose of unifying a disparate
+memory space into one field. A lot more can be added on top of this to make it a proper
+manager unit that would provide virtual memory with memory safety features. This isn't
+currently too important.</p>
+<p>This feels like the wrong solution for specific problems, though. Some other things I've toyed
+with include:</p>
+<ul class="simple">
+<li><p>Hash-maps</p></li>
+<li><p>Slabs and pools (aforementioned)</p></li>
+<li><p>Naïve constrained declaration and no dynamicity</p></li>
+<li><p>other detritus and miscellanea</p></li>
+</ul>
+<p>The hash-map was probably my favourite idea, though.</p>
+<section id="static-hashing-and-hashmaps"><h3>Static hashing and hashmaps</h3>
+<p>A hashmap is a really neat data structure: it's an associative array where input keys
+are used to look up locations in memory easily. These keys are put through a hashing
+function, transforming them into a hash index or hash code, and this hash will point
+to where the memory is stored in the corresponding target array. Since with fixed-width
+input data hashing will 'always' take the same amount of operations, most hashmap designs
+will feature amortised constant <code class="docutils literal">O(1)</code> access, though in practice this isn't really the case.</p>
+<p>Since a typical hashmap will not run in an environment where each possible key has a unique
+location corresponding to it, some kind of hash colision mitigation is unavoidable (thus
+the average hashing process is not an injective operation), and since allocating the entire
+space is also frequently uneconomic reallocation can end up being necessary at many points (and,
+remember, reallocation and dynamic memory stuff is undesirable in bare metal).</p>
+<p>The issue here is that we aren't really allowed to grow and shrink at will, and should aim to
+take up as much memory as possible; that is, the initial storage allocation should aim to
+give the subsystem the maximum amount of memory it would need during its whole runtime. This
+becomes the memory ceiling of the datastructure. The hashmap, then, would either have to be
+statically allocated in the flash binary, or will have to be <code class="docutils literal">malloc()</code>'d at startup and
+never freed.</p>
+<p>This still leaves the question of colisions open.</p>
+<p>Let's add more context. As I mentioned before, I started thinking about all of these things
+in the context of developing a BASIC-like running on the ESP32, and so some structures and
+requirements tend to emerge spontaneously without me having to do much deciding. In a typical
+BASIC, variables are stored onto a stack or on a table and then every time they're referenced
+the interpreter trawls this structure (<code class="docutils literal">O(n)</code> as a function of table size) to find the variable,
+and if it's not present it pushes it onto the structure (e.g. in <a class="reference external" href="https://github.com/mist64/msbasic/blob/master/var.s">Microsoft BASIC for the 6502</a> you
+can use variables without declaring them, which automatically implicitly declares them there). This
+trawl is repeated every time a variable is referenced, absolutely nuking performance. It's not like
+it's much of a space-saving thing, either: MS-BASIC used a weird 5-byte format for floating point
+data (fine), as well as integers (what) that were treated as 16-bit numbers (what?) with
+24 padding bits (<cite>what!?</cite>), plus two bytes for the name, meaning that each variable took up
+seven bytes of space.</p>
+<p>Arrays, as far as I know, need 4+2n bytes of bookkeeping on top of
+their actual memory footprint: 1 for the name, 2 for the address, 1 for the number of dimensions,
+and 2n for the length of the dimensions for n dimensions <a class="footnote-reference brackets" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-6" id="footnote-reference-6" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a> give or take.
+As you'll probably recognise, arrays go onto the heap of the BASIC, but it's important
+to note that once you <code class="docutils literal">DIM</code>/declare an array, it can't be deallocated or resized (for details, see <a class="reference external" href="https://www.c64-wiki.com/wiki/DIM">here</a>),
+which is a recurring theme in the low-power space. More modern BASICs like the beautiful
+QB64 allow <a class="reference external" href="https://qb64phoenix.com/qb64wiki/index.php/REDIM">resizing and reallocating arrays</a> as enabled by running on top of a fat OS
+that can handle moving a lot of memory around for them <a class="footnote-reference brackets" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-7" id="footnote-reference-7" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a> without having to
+think too much about it themselves.</p>
+<p>While for arrays this trawl is pretty 'cheap' (it's still <code class="docutils literal">O(n)</code> but with n ≤ 255), for
+variables it can get nasty pretty quick (realistically you can input up to 26*36 = 936 variables,
+but the interpreter can be reading bytecode that would use 'syntactically inappropriate' variable
+names going into thousands of combinations; a theoretical maximum of around 4000 variables based
+on memory constraints is an example of such a large number). This is a big performance sink, but
+solutions to the problem are tough to come up with. I believe that a statically allocated hashmap
+is in fact a solution to this.</p>
+<p>Simply using a 16-bit key, it's possible to effortlessly index into a 64K table without any
+further adjustments. This would mean that a 2-character name would just point to the address
+in the code table without requiring any bookkeeping; this would be an example of a 'perfect
+hashing table'. My first musings, thus, involved using 2 CJK characters as possible
+variable names. Encoded as UTF-16 and then somewhat adjusted, this means that both
+are ∈ <code class="docutils literal">[0x0000, 0x6bff]</code> which, when concatenated together, produces a ~30-bit key, which
+would somehow have to be mapped onto a 64K table in some way; every single possible key
+would have to compete with ~16K other keys for its slot in the table.</p>
+<p>The naïve way to resolve this would be to add the top and bottom hanzi together. This is
+awful, because it'll make a lot of small collisions easy: let's say that we name one variable
+女王 ('queen', <code class="docutils literal">0x5973'738B</code> - the sum of the two hanzi is <code class="docutils literal">0xCCFE</code>); it will immediately collide
+with 女王 ('princess', <code class="docutils literal">0x738B'0x5973</code>). This extends to all anagrams, of which there is
+a large amount in e.g. Japanese (本日 'today' vs. 日本 'Japan' is another neat example). While
+it's tempting to tell the user to Never Ever use anagram variable names, I felt that I needed
+to mitigate this in some way. So, addition is not a good hashing function.</p>
+<p>What I did was use a <a class="reference external" href="https://github.com/skeeto/hash-prospector">hash prospector</a> to find good 16-bit hashes and incorporate that
+into the thing. It spat out quite a few functions; what I settled on was the following:</p>
+<div class="code"><pre class="code cpp"><a id="rest_code_9a179bfc60b148c38cbab73effc3e379-1" name="rest_code_9a179bfc60b148c38cbab73effc3e379-1" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-1"></a><span class="c1">// bias = 0.0049752954186705221</span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-2" name="rest_code_9a179bfc60b148c38cbab73effc3e379-2" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-2"></a><span class="kt">uint16_t</span><span class="w"> </span><span class="nf">hash1</span><span class="p">(</span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-3" name="rest_code_9a179bfc60b148c38cbab73effc3e379-3" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-3"></a><span class="p">{</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-4" name="rest_code_9a179bfc60b148c38cbab73effc3e379-4" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-4"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">11</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-5" name="rest_code_9a179bfc60b148c38cbab73effc3e379-5" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-5"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mh">0x104bU</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-6" name="rest_code_9a179bfc60b148c38cbab73effc3e379-6" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-6"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">9</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-7" name="rest_code_9a179bfc60b148c38cbab73effc3e379-7" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-7"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mh">0xcd1bU</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-8" name="rest_code_9a179bfc60b148c38cbab73effc3e379-8" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-8"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">7</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-9" name="rest_code_9a179bfc60b148c38cbab73effc3e379-9" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-9"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mh">0x42a5U</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-10" name="rest_code_9a179bfc60b148c38cbab73effc3e379-10" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-10"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">11</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-11" name="rest_code_9a179bfc60b148c38cbab73effc3e379-11" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-11"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mh">0x258dU</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-12" name="rest_code_9a179bfc60b148c38cbab73effc3e379-12" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-12"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">9</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-13" name="rest_code_9a179bfc60b148c38cbab73effc3e379-13" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-13"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-14" name="rest_code_9a179bfc60b148c38cbab73effc3e379-14" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-14"></a><span class="p">}</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-15" name="rest_code_9a179bfc60b148c38cbab73effc3e379-15" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-15"></a>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-16" name="rest_code_9a179bfc60b148c38cbab73effc3e379-16" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-16"></a><span class="c1">// bias = 0.0046809801814303642</span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-17" name="rest_code_9a179bfc60b148c38cbab73effc3e379-17" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-17"></a><span class="kt">uint16_t</span><span class="w"> </span><span class="nf">hash2</span><span class="p">(</span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-18" name="rest_code_9a179bfc60b148c38cbab73effc3e379-18" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-18"></a><span class="p">{</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-19" name="rest_code_9a179bfc60b148c38cbab73effc3e379-19" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-19"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">7</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-20" name="rest_code_9a179bfc60b148c38cbab73effc3e379-20" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-20"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mh">0xb257U</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-21" name="rest_code_9a179bfc60b148c38cbab73effc3e379-21" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-21"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">9</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-22" name="rest_code_9a179bfc60b148c38cbab73effc3e379-22" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-22"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mh">0x8829U</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-23" name="rest_code_9a179bfc60b148c38cbab73effc3e379-23" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-23"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-24" name="rest_code_9a179bfc60b148c38cbab73effc3e379-24" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-24"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mh">0x0af7U</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-25" name="rest_code_9a179bfc60b148c38cbab73effc3e379-25" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-25"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">12</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-26" name="rest_code_9a179bfc60b148c38cbab73effc3e379-26" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-26"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mh">0x504dU</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-27" name="rest_code_9a179bfc60b148c38cbab73effc3e379-27" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-27"></a><span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">^=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">6</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-28" name="rest_code_9a179bfc60b148c38cbab73effc3e379-28" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-28"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_9a179bfc60b148c38cbab73effc3e379-29" name="rest_code_9a179bfc60b148c38cbab73effc3e379-29" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_9a179bfc60b148c38cbab73effc3e379-29"></a><span class="p">}</span><span class="w"></span>
+</pre></div>
+<p>Bias here represents how strongly correlated toggling a bit of input is with specific
+bits of output (low hash, meaning less correlation, is good). These two are chained together, operating
+on separate halves of the variable name; a simplified code example:</p>
+<div class="code"><pre class="code cpp"><a id="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-1" name="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-1" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_4bcbb2111bca43b6ade9d56104c5baf7-1"></a><span class="kt">uint16_t</span><span class="w"> </span><span class="nf">hash</span><span class="p">(</span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">input</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-2" name="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-2" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_4bcbb2111bca43b6ade9d56104c5baf7-2"></a><span class="p">{</span><span class="w"></span>
+<a id="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-3" name="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-3" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_4bcbb2111bca43b6ade9d56104c5baf7-3"></a><span class="w">        </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-4" name="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-4" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_4bcbb2111bca43b6ade9d56104c5baf7-4"></a><span class="w">        </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">hash1</span><span class="p">(</span><span class="n">input</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xff'ff</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-5" name="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-5" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_4bcbb2111bca43b6ade9d56104c5baf7-5"></a><span class="w">        </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">hash2</span><span class="p">(</span><span class="n">input</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-6" name="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-6" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_4bcbb2111bca43b6ade9d56104c5baf7-6"></a><span class="w">        </span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">hash1</span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="n">b</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-7" name="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-7" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_4bcbb2111bca43b6ade9d56104c5baf7-7"></a>
+<a id="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-8" name="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-8" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_4bcbb2111bca43b6ade9d56104c5baf7-8"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">c</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-9" name="rest_code_4bcbb2111bca43b6ade9d56104c5baf7-9" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_4bcbb2111bca43b6ade9d56104c5baf7-9"></a><span class="p">}</span><span class="w"></span>
+</pre></div>
+<p>This provides surprisingly decent hash performance. Using a collision measurement script I wrote, I
+found that for a table of size <cite>n</cite>, there is on average fewer than <cite>n/2</cite> collision events, and that
+around half of that is a single collision; iteratively adding mitigations shows that after around 50%
+population, the hash table starts getting more and more collisions, and that beyond around 80% population,
+the table practically becomes unusable performance-wise; insertion changes from <code class="docutils literal">O(1)</code> in a theoretically
+optimal table to <code class="docutils literal">O(n)</code> in a static one. Average-case performance is still pretty good, but worst-case
+performance isn't good at all. Still, this beats iterating through a table of variables to extract the
+named one.</p>
+<p>To mitigate collisions during insertion, I simply opted for the following simple algorithm:</p>
+<ol class="arabic simple">
+<li><p>If there is no collision, insert; stop.</p></li>
+<li><p>If there is a collision, rehash <code class="docutils literal">c</code> once. If there is no collision, insert; stop.</p></li>
+<li><p>If there is still a collision, increment <code class="docutils literal">c = c+1</code>. If there is no collision, insert; stop.</p></li>
+<li><p>If there is still a collision, go to #3</p></li>
+</ol>
+<p>In pseudocode:</p>
+<div class="code"><pre class="code cpp"><a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-1" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-1" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-1"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">hash_insert</span><span class="p">(</span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">input</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-2" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-2" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-2"></a><span class="p">{</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-3" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-3" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-3"></a><span class="w">        </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-4" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-4" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-4"></a><span class="w">        </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">hash1</span><span class="p">(</span><span class="n">input</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xff'ff</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-5" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-5" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-5"></a><span class="w">        </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">hash2</span><span class="p">(</span><span class="n">input</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-6" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-6" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-6"></a><span class="w">        </span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">hash1</span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="n">b</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-7" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-7" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-7"></a>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-8" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-8" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-8"></a><span class="w">        </span><span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">collides</span><span class="p">(</span><span class="n">c</span><span class="p">))</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-9" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-9" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-9"></a><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-10" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-10" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-10"></a><span class="w">                </span><span class="n">insert_at</span><span class="p">(</span><span class="n">c</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-11" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-11" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-11"></a><span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-12" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-12" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-12"></a><span class="w">        </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-13" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-13" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-13"></a><span class="w">        </span><span class="k">else</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-14" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-14" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-14"></a><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-15" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-15" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-15"></a><span class="w">                </span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">hash2</span><span class="p">(</span><span class="n">c</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-16" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-16" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-16"></a><span class="w">                </span><span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">collides</span><span class="p">(</span><span class="n">c</span><span class="p">))</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-17" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-17" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-17"></a><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-18" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-18" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-18"></a><span class="w">                        </span><span class="n">insert_at</span><span class="p">(</span><span class="n">c</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-19" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-19" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-19"></a><span class="w">                        </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-20" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-20" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-20"></a><span class="w">                </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-21" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-21" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-21"></a><span class="w">                </span><span class="k">else</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-22" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-22" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-22"></a><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-23" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-23" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-23"></a><span class="w">                        </span><span class="k">for</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">SIZE</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-24" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-24" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-24"></a><span class="w">                        </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-25" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-25" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-25"></a><span class="w">                                </span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">c</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-26" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-26" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-26"></a>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-27" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-27" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-27"></a><span class="w">                                </span><span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">collides</span><span class="p">(</span><span class="n">c</span><span class="p">))</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-28" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-28" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-28"></a><span class="w">                                </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-29" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-29" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-29"></a><span class="w">                                        </span><span class="n">insert_at</span><span class="p">(</span><span class="n">c</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-30" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-30" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-30"></a><span class="w">                                        </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-31" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-31" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-31"></a><span class="w">                                </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-32" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-32" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-32"></a><span class="w">                        </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-33" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-33" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-33"></a><span class="w">                        </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-34" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-34" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-34"></a><span class="w">                </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-35" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-35" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-35"></a><span class="w">        </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_71be15f48db14e45b5aa625f0fae7d41-36" name="rest_code_71be15f48db14e45b5aa625f0fae7d41-36" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_71be15f48db14e45b5aa625f0fae7d41-36"></a><span class="p">}</span><span class="w"></span>
+</pre></div>
+<p>Of course, <code class="docutils literal">c</code> should not be allowed to hit the map out of bounds, but otherwise it's a surprisingly
+simple principle.</p>
+<p>Unfortunately, because we mitigate collisions in this way, a table of names must be maintained separately
+from the data map, so that indexing into the table will tell us if mitigations were applied or not, so we
+know whether we've found the variable we want or if it's <strike> in another castle </strike>​ in a different memory
+location. This means the table should have a structure like:</p>
+<div class="code"><pre class="code cpp"><a id="rest_code_35b7706a71b9454a9b73877692e6e432-1" name="rest_code_35b7706a71b9454a9b73877692e6e432-1" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_35b7706a71b9454a9b73877692e6e432-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">entry_t</span><span class="w"></span>
+<a id="rest_code_35b7706a71b9454a9b73877692e6e432-2" name="rest_code_35b7706a71b9454a9b73877692e6e432-2" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_35b7706a71b9454a9b73877692e6e432-2"></a><span class="p">{</span><span class="w"></span>
+<a id="rest_code_35b7706a71b9454a9b73877692e6e432-3" name="rest_code_35b7706a71b9454a9b73877692e6e432-3" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_35b7706a71b9454a9b73877692e6e432-3"></a><span class="w">        </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">name</span><span class="p">;</span><span class="w">          </span><span class="c1">// 4</span>
+<a id="rest_code_35b7706a71b9454a9b73877692e6e432-4" name="rest_code_35b7706a71b9454a9b73877692e6e432-4" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_35b7706a71b9454a9b73877692e6e432-4"></a><span class="w">        </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">data</span><span class="p">;</span><span class="w">          </span><span class="c1">// +4</span>
+<a id="rest_code_35b7706a71b9454a9b73877692e6e432-5" name="rest_code_35b7706a71b9454a9b73877692e6e432-5" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_35b7706a71b9454a9b73877692e6e432-5"></a><span class="p">};</span><span class="w"></span>
+<a id="rest_code_35b7706a71b9454a9b73877692e6e432-6" name="rest_code_35b7706a71b9454a9b73877692e6e432-6" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_35b7706a71b9454a9b73877692e6e432-6"></a>
+<a id="rest_code_35b7706a71b9454a9b73877692e6e432-7" name="rest_code_35b7706a71b9454a9b73877692e6e432-7" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#rest_code_35b7706a71b9454a9b73877692e6e432-7"></a><span class="k">static</span><span class="w"> </span><span class="n">entry_t</span><span class="w"> </span><span class="n">name_table</span><span class="p">[</span><span class="mi">1024</span><span class="p">];</span><span class="w"></span>
+</pre></div>
+<p>The astute reader will notice that this is one byte more than the MS-BASIC variable table, <cite>without</cite> the
+performance hit of having to loop through an array to find what we want every time a variable is ever used.
+Such a table would eat 8K of memory for 1K variables (totalling 4K data) with longer names (four ASCII
+characters, or 2 CJK characters). It feels a <em>bit</em> like defeat having to still store the name in the
+thing, but it's essential to disambiguating between two identically hashed names; basically, we're using
+the name as a way to gauge whether the accessor should do a mitigation or not, without wasting too much space and
+still preserving some onomastics. As the names are stored as one integer made from concatenated characters,
+checking whether it's the right name is a simple single-instruction comparsion, and we're avoiding
+complex string routines that would basically be obligatory with a longer variable name. Checking whether anything's been
+allocated is also pretty easy: since we know names won't have the highest bit set (remember, we have a ~30-bit key),
+simply setting the name to <code class="docutils literal">0xffff'ffff</code> ensures that it's easy to check for whether a 'spot' is taken by simply
+doing <code class="docutils literal">if(int32_t(name) &lt; 0) { /* ... */ }</code> without having to worry much. Using a larger table than 1024 is likewise
+pretty easy to a point: at 16K entries, the table reaches 128K of memory use, which is near our upper static
+allocation limit and should be avoided.</p>
+</section><section id="slabs-and-pools"><h3>Slabs and pools</h3>
+<p>I haven't really dug deep into slab and pooling because we really don't have too much memory
+to work with in general, so doing stuff in this space would not be quite as efficient
+as it could be if we had more memory to manage. Generally speaking, slab allocation is
+most effective when you have an OS that manages memory tightly. Since spinning up and
+destroying pages can be costly, and finding free memory can sometimes be a chore, the kernel
+instead allocates a bunch of chunks that can fit a certain object type, and then hands that
+memory out when requested and reclaims it when freed, all by adjusting a bookkeeping structure
+that shows which parts of slabs are free to use and which occupied. Freeing and allocating memory
+in this case is an illusion: it means just rewriting the appropriate part of the bookkeeping table.
+When something is 'destroyed' or reclaimed in a slab allocator, the object structure is kept
+cached, so that when another instance is requested there is no set-up involved and the cached
+object can be returned basically intact. The objects are usually also constructed ahead of time
+and in one go.</p>
+<p>Memory pooling is a similar concept, where a large swath of memory is preallocated and then
+divided up by a pool allocator. There's bookkeeping and all that jazz, but what separates
+it from a slab (though neither is really extremely well-defined) is that there are no
+premade objects in pools, and they can store heterogenous data. It's basically a microcosmos
+of memory management.</p>
+<p>Memory pooling could perhaps work here, but in a way the <cite>idea</cite> of a memory pool is superfluous because
+there's no real OS for us to request a lot of memory from and then subdivide it to avoid
+the overhead because we're that OS and we have to manage the memory we have in this manner anyway.
+That is, all our memory is in memory pools to begin with. Nobody's there to reclaim leaked memory.</p>
+<p>The same principles apply, though: we want to keep a small bookkeeping structure that would indicate
+which parts of memory are free to use and which are taken.</p>
+<p>As there's very little memory to go around,
+a very light bookkeeping structure would be not just optimal, but really necessary. This is balanced
+out by the need for space savings and very fine memory granularity. For example, we can
+assume that the smallest unit of memory that can be handed out like this would be 8 bytes;
+to keep track of every unit, a 64K memory space would need 8K locations keeping storage
+status. If we use a bitmap, this means the bookkeeping structure would only have an overhead
+of 1K (8 locations per byte for 8 bytes of space per location) plus anything on top (like a
+pointer to the structure and whatnot) that would add a handful of extra bytes. Computationally,
+this would suck to manage a bit, but if space savings were the main concern this would probably
+be the way to go. Less fine-grained memory allocation would in turn allow for more metadata
+in the bookkeeping structure while keeping to the same space concerns: if each space manages
+16B of data, then 2 bits per location would allow for a total of 4 states to be stored
+per item, possibly facilitating things like access control; if each space manages
+64B of data, then a full byte is available for this purpose.</p>
+<p>Another bookkeeping approach would be to keep a table of what's been allocated, a pointer
+to it, and the length. Several other approaches (such as a linked list) also exist, and are,
+in my opinion, all better suited for more memory-rich platforms.</p>
+</section><section id="naive-without-dynamicity"><h3>Naïve without dynamicity</h3>
+<p>Most of the stuff an embedded programme will need will be
+statically allocated ahead of time anyway. In this case,
+when I say <cite>naïve</cite> I mean that there's no magic behind the
+scenes and nothing is playing musical chairs with the memory.
+Everything is baked in at compilation time and no deviation
+is allowed. This is how most of the "important data" will
+live on the chip anyway. A screen buffer, for example, will
+be statically allocated as 75K or 150K of RAM with no manager,
+and resources like fonts or images or sprites or whatnot
+that would be statically burnt to flash are likewise going
+to just be this kind of memory: it's basically handling
+unmanaged, unscoped static memory with bare code-hands.
+There's nothing to talk about in terms of management here,
+strictly speaking.</p>
+</section></section><section id="what-else"><h2>What else?</h2>
+<p>Really, it's just me staring at the screen blarting out words as they come,
+without a coherent idea of where it's going. I'm going to be designing
+the BASIC-like over the next few weeks/months (depending on how hard it
+holds my attention, really), and will probably be writing some kind of static
+hashmap (more sophisticated than the pseudocode above), a stack (possibly
+templated for type and depth), and a rudimentary array allocator that would
+implement a basic (hehe) heap. I'm not actually sure how useful multi-dimensional
+arrays were back in the olden days, though; I can imagine a 2D or 3D array
+doing just fine, but do you really need a 37D array when you're not doing
+some fancy linear algebra churning vectors (which you shouldn't be doing
+on an ESP32 anyway)?</p>
+<hr class="docutils">
+<aside class="footnote-list brackets"><aside class="footnote brackets" id="footnote-1" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-reference-1">1</a><span class="fn-bracket">]</span></span>
+<p>I'm not even exaggerating that much, believe it or not;
+we have a very good idea of the
+<a class="reference external" href="http://www.roylongbottom.org.uk/whetstone.htm">historical performance of the computers of the era</a>,
+with a PDP-11/34 giving 0.204 MWIPS (million Whetstone instructions per second),
+whereas an ESP32 clocked at 240MHz (the default in the CYD) hits
+<a class="reference external" href="https://github.com/nopnop2002/esp-idf-benchmark">around 50 MWIPS</a>, for
+around 250x the floating point performance by this crude benchmark comparsion. Given
+how thoroughly the ESP32's floating point unit can suck, the performance gap
+is probably much, much greater on integer data, which is what
+most stuff on the CYD would be anyway. My personal benchmarks
+give floating point arithmetic around a 12x worse performance
+on the CYD's ESP32 chip (it takes appx. 4.6 ticks to do i32
+addition, compared to appx. 53.5 ticks for f32 addition), if
+we don't account for division (~5.5 / ~ <strong>270</strong> ≈ 50x worse), but
+division is known to be a jagged edge in arithmetic algorithmics.
+It doesn't quite matter what the ticks are, they're the same measure
+for all operations giving a decent baseline to compare these by
+(but if you're wondering what these ticks are, they're a measure of
+appx. how many ticks, on average, of a GHz clock are needed
+for an operation to finish; a ballpark of 1GHz/4.6 gives us
+the processor's clocked speed at ≈220MHz, which means that
+arithmetic ops have an average throughput of one per cycle,
+while float ops have an average throughput of around one
+per 12 clock cycles).</p>
+</aside><aside class="footnote brackets" id="footnote-2" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-reference-2">2</a><span class="fn-bracket">]</span></span>
+<p>Not immediately, but I do have to say how ESP's development platform,
+called the ESP-IDF (unrelated to the child killer club), is a bit of a
+nuisance to work with and has fairly brittle versioning. It's a shame that
+this is the only way to access more sophisticated tooling for the chips, such
+as partition table editing and (easy) core assignment (you can still do it,
+but it'll be a bit harder in Arduino IDE).</p>
+</aside><aside class="footnote brackets" id="footnote-3" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-reference-3">3</a><span class="fn-bracket">]</span></span>
+<p>Tactility is cool, although it only serves the capacitative boards and doesn't support
+resistive screen boards. I assume modifying it to work on R-variants would be pretty easy;
+I just haven't bothered, seeing as it wants at least 4MB of PSRAM to make usage not
+miserable; but the project is nonetheless really cool. Building executables for it is also
+not going to be a pleasant experience as it requires a lot of fiddling with ESP-IDF, which
+I've already been burnt twice on. Might be worth looking into further down the line as I explore
+making this into a worthwhile little computer rather than just treating it as a toy as I
+have until now.</p>
+</aside><aside class="footnote brackets" id="footnote-4" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-reference-4">4</a><span class="fn-bracket">]</span></span>
+<p>I know I said 'bare metal', but it's probably better to think of the ESP32 running a RTOS
+kernel as 'skimpy metal' wearing an inappropriately revealing bikini with no top. You're still
+basically as close to the metal as you can be, and you can certainly just take control over the
+device pretty easily and 'usurp' the kernel and the task manager and do your own thing (and there
+are other kernels available other than RTOS, via ESP-IDF), but the convenience here is that at least
+your <em>whole</em> ass isn't out, just both cheeks. It's difficult to overstate how useful it is to
+be handed a codebase that will manage your multitasking on its own! Some drawbacks include the
+watchdog, which will kill any process taking too much time, which may end up killing some code of yours
+running in a loop, so some code pathe engineering won't hurt.</p>
+</aside><aside class="footnote brackets" id="footnote-5" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-reference-5">5</a><span class="fn-bracket">]</span></span>
+<p>The block sizes and types that we can see
+<a class="reference external" href="https://github.com/espressif/arduino-esp32/issues/6777#issuecomment-1131658098">in this Github issue</a>
+point to a bit more difficult heap situation. In terms of Po2 block sizes, it seems like we can allocate
+4 blocks of 64K, 3 blocks of 32K, and so on, in increasingly smaller chunks. This might be something to
+work around in the future.</p>
+</aside><aside class="footnote brackets" id="footnote-6" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-reference-6">6</a><span class="fn-bracket">]</span></span>
+<p>I didn't really take a look at how MS-BASIC stores the size of each dimension in the array table,
+so this is an estimate, but it's nonetheless documented behaviour that array dimensions can have different
+sizes and that each dimension's length is ∈ [0, 32767], so they obviously must be stored separately.</p>
+</aside><aside class="footnote brackets" id="footnote-7" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="thoughts-about-memory-management-on-bare-metal-pt-1.html#footnote-reference-7">7</a><span class="fn-bracket">]</span></span>
+<p>for QB64, this is stuff inherited
+from QuickBASIC, which was a significant step up from MS-BASIC for the 6502 in terms of
+hardware and software capabilities alike. Even though it feels properly rudimentary now,
+MS-DOS (and other DOSes of the time) were proper operating systems with a lot of bells and whistles
+compared to things like the Commodore for which BASIC was the closest it got to an OS at all.
+Even further, QB64 transpiles to C++, which is then piped through GCC, so its dynamic memory
+features depend on code in the STL, predominantly the use of <code class="docutils literal"><span class="pre">std::vector</span></code></p>
+</aside></aside></section>
+</div>
+    <aside class="postpromonav"><nav><ul itemprop="keywords" class="tags">
+<li><a class="tag p-category" href="../categories/baremetal.html" rel="tag">baremetal</a></li>
+            <li><a class="tag p-category" href="../categories/c.html" rel="tag">c</a></li>
+            <li><a class="tag p-category" href="../categories/c%2B%2B.html" rel="tag">c++</a></li>
+            <li><a class="tag p-category" href="../categories/cyd.html" rel="tag">cyd</a></li>
+            <li><a class="tag p-category" href="../categories/esp32.html" rel="tag">esp32</a></li>
+            <li><a class="tag p-category" href="../categories/programming.html" rel="tag">programming</a></li>
+        </ul>
+<ul class="pager hidden-print">
+<li class="previous">
+                <a href="kernel-configuration-pt-one.html" rel="prev" title="Kernel Configuration, Part One">Предыдущая запись</a>
+            </li>
+        </ul></nav></aside></article><!--End of body content--><footer id="footer">
+            Contents © 2025         <a href="mailto:whocares0@gmail.com">enn</a> - Powered by         <a href="https://getnikola.com" rel="nofollow">Nikola</a>         
+            
+            
+        </footer>
+</div>
+</div>
+
+
+        <script src="../../assets/js/all-nocdn.js"></script><script>
+    baguetteBox.run('div#content', {
+        ignoreClass: 'islink',
+        captions: function(element){var i=element.getElementsByTagName('img')[0];return i===undefined?'':i.alt;}});
+    </script>
+</body>
+</html>

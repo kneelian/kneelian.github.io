@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns# article: http://ogp.me/ns/article#
+" lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baremetal Aarch64: Pt 2, Hello World Advanced | enn-devblog</title>
+<link href="../../assets/css/all-nocdn.css" rel="stylesheet" type="text/css">
+<meta name="theme-color" content="#5670d4">
+<meta name="generator" content="Nikola (getnikola.com)">
+<link rel="canonical" href="https://example.com/ru/posts/baremetal-part-two.html">
+<!--[if lt IE 9]><script src="../../../assets/js/html5.js"></script><![endif]--><meta name="author" content="enn">
+<link rel="prev" href="baremetal-part-one.html" title="Baremetal Aarch64: Pt 1, Hello World" type="text/html">
+<link rel="next" href="baremetal-part-three.html" title="Baremetal Aarch64: Pt 3, Hello World Ultimate" type="text/html">
+<meta property="og:site_name" content="enn-devblog">
+<meta property="og:title" content="Baremetal Aarch64: Pt 2, Hello World Advanced">
+<meta property="og:url" content="https://example.com/ru/posts/baremetal-part-two.html">
+<meta property="og:description" content="So we set up the UART device and we are going to use it as
+the main way to talk to the outside world for now. The UART
+is dead simple to set up and use, especially when compared
+with writing a driver ">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2022-07-25T17:17:01+02:00">
+<meta property="article:tag" content="aarch64">
+<meta property="article:tag" content="armasm">
+<meta property="article:tag" content="asm">
+<meta property="article:tag" content="hello world">
+<meta property="article:tag" content="programming">
+<link rel="alternate" hreflang="en" href="../../posts/baremetal-part-two.html">
+</head>
+<body>
+<a href="#content" class="sr-only sr-only-focusable">Перейти к главному содержимому</a>
+
+<!-- Menubar -->
+
+<nav class="navbar navbar-expand-md static-top mb-4
+navbar-dark
+bg-dark
+"><div class="container">
+<!-- This keeps the margins nice -->
+        <a class="navbar-brand" href="../">
+
+            <span id="blog-title">enn-devblog</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#bs-navbar" aria-controls="bs-navbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="bs-navbar">
+            <ul class="navbar-nav mr-auto">
+<li class="nav-item dropdown">
+<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">The Blog</a>
+            <div class="dropdown-menu">
+                    <a href="../../archive.html/" class="dropdown-item">Archived Posts</a>
+                    <a href="../../posts/" class="dropdown-item">All Posts</a>
+            </div>
+            </li>
+<li class="nav-item dropdown">
+<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">About</a>
+            <div class="dropdown-menu">
+                    <a href="../../about-me/" class="dropdown-item">About me</a>
+            </div>
+                </li>
+<li class="nav-item">
+<a href="../../categories/index.html" class="nav-link">Tags</a>
+                </li>
+<li class="nav-item">
+<a href="../../pages/contact.html" class="nav-link">Contact</a>
+
+                
+            </li>
+</ul>
+<ul class="navbar-nav navbar-right">
+<li>
+            </li>
+<li class="nav-item"><a href="../../" rel="alternate" hreflang="en" class="nav-link">English</a></li>
+
+                
+                    
+    
+    <li class="nav-item">
+    <a href="baremetal-part-two.rst" id="sourcelink" class="nav-link">Источник</a>
+    </li>
+
+
+                
+            </ul>
+</div>
+<!-- /.navbar-collapse -->
+    </div>
+<!-- /.container -->
+</nav><!-- End of Menubar --><div class="container" id="content" role="main">
+    <div class="body-content">
+        <!--Body content-->
+        
+        
+        
+<article class="post-text h-entry hentry postpage" itemscope="itemscope" itemtype="http://schema.org/Article"><header><h1 class="p-name entry-title" itemprop="headline name"><a href="#" class="u-url">Baremetal Aarch64: Pt 2, Hello World Advanced</a></h1>
+
+        <div class="metadata">
+            <p class="byline author vcard p-author h-card"><span class="byline-name fn p-name" itemprop="author">
+                    enn
+            </span></p>
+            <p class="dateline">
+            <a href="#" rel="bookmark">
+            <time class="published dt-published" datetime="2022-07-25T17:17:01+02:00" itemprop="datePublished" title="2022-07-25 17:17">2022-07-25 17:17</time></a>
+            </p>
+            
+        <p class="sourceline"><a href="baremetal-part-two.rst" class="sourcelink">Источник</a></p>
+
+        </div>
+        
+
+    </header><div class="e-content entry-content" itemprop="articleBody text">
+    <p>So we set up the UART device and we are going to use it as
+the main way to talk to the outside world for now. The UART
+is dead simple to set up and use, especially when compared
+with writing a driver for more conventional communication
+methods. Apart from console output, which we tested last time,
+we're also going to use it as our (unbuffered) input method.
+I'm not gonna go through the effort of writing a PS/2 or
+USB stack for a Hello World kind of deal, UART is sufficient.</p>
+<section id="cleaning-up"><h2>Cleaning up</h2>
+<p><a class="reference external" href="baremetal-part-one.html">Last time</a> I cut some corners in that I hardcoded the
+UART memory address but now we're gonna properly load it from a
+label that we can conveniently change if, somewhere down the
+line, the UART base changes or if something else happens that
+we gotta take care of. The start of label 1 will now be:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_1af1f35977ab459294ab6d0037791581-1" name="rest_code_1af1f35977ab459294ab6d0037791581-1" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-1"></a><span class="w">        </span><span class="nl">UART_BASE:</span><span class="w"> </span><span class="na">.word</span><span class="w"> </span><span class="mi">0x09000000</span><span class="w"></span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-2" name="rest_code_1af1f35977ab459294ab6d0037791581-2" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-2"></a><span class="c1">//      UART_DATA: .byte 0x00</span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-3" name="rest_code_1af1f35977ab459294ab6d0037791581-3" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-3"></a><span class="c1">//      UART_FLAG: .byte 0x18</span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-4" name="rest_code_1af1f35977ab459294ab6d0037791581-4" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-4"></a><span class="c1">//      UART_CNTL: .byte 0x30</span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-5" name="rest_code_1af1f35977ab459294ab6d0037791581-5" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-5"></a><span class="c1">//      UART_FIFO: .byte 0x34</span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-6" name="rest_code_1af1f35977ab459294ab6d0037791581-6" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-6"></a><span class="c1">//      UART_INTC: .byte 0x44</span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-7" name="rest_code_1af1f35977ab459294ab6d0037791581-7" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-7"></a>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-8" name="rest_code_1af1f35977ab459294ab6d0037791581-8" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-8"></a><span class="w">        </span><span class="na">.section</span><span class="w"> </span><span class="no">.text</span><span class="w"></span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-9" name="rest_code_1af1f35977ab459294ab6d0037791581-9" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-9"></a><span class="w">        </span><span class="err">1:</span><span class="w"></span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-10" name="rest_code_1af1f35977ab459294ab6d0037791581-10" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-10"></a><span class="w">                </span><span class="nf">adrp</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">UART_BASE</span><span class="w"></span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-11" name="rest_code_1af1f35977ab459294ab6d0037791581-11" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-11"></a><span class="w">                </span><span class="nf">add</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="p">:</span><span class="no">lo12</span><span class="p">:</span><span class="no">UART_BASE</span><span class="w"></span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-12" name="rest_code_1af1f35977ab459294ab6d0037791581-12" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-12"></a><span class="w">                </span><span class="nf">ldr</span><span class="w">  </span><span class="no">w0</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-13" name="rest_code_1af1f35977ab459294ab6d0037791581-13" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-13"></a>
+<a id="rest_code_1af1f35977ab459294ab6d0037791581-14" name="rest_code_1af1f35977ab459294ab6d0037791581-14" href="baremetal-part-two.html#rest_code_1af1f35977ab459294ab6d0037791581-14"></a><span class="w">                </span><span class="nf">add</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x30</span><span class="w">               </span><span class="c1">// UART_CNTL</span>
+</pre></div>
+<p>Not much has changed, except we're now loading the address.
+You'll note that it's a federal fucking issue to load from
+memory in Aarch64. We're first loading the page address of
+where the <code class="docutils literal">UART_BASE</code> label is located into <code class="docutils literal">x0</code> via the
+<code class="docutils literal">adrp</code> instruction; this loads the higher 56 bits of the
+address into the register, which then forces us to add the
+offset separately using <code class="docutils literal">add</code> and the <code class="docutils literal"><span class="pre">:lo12:(name)</span></code>
+specifier, where the assembler helpfully extracts the lower
+12 bits (hence the name) of the label for us and generates
+a normal <code class="docutils literal">add</code> instruction with the offset as an immediate.</p>
+<p>Two pits I fell into while playing with this:</p>
+<blockquote>
+<ol class="arabic simple">
+<li><p>sometimes the assembler fails to error on unaligned access and will joyfully read instructions one byte off</p></li>
+<li><p><code class="docutils literal">ldr x0, [x0]</code> was a big headache since reading from a word into a dword register reads the word <em>twice</em>, once in low and once in high bits</p></li>
+</ol>
+</blockquote>
+<p>The second one I keep forgetting about every now and then,
+I'm 100% sure I'll encounter it again. It's not mentioned in
+the official online docs, and I don't even see it mentioned in
+the 5200 (!) page architecture reference manual, though that
+might be my own search fuckup.</p>
+<p>When you <code class="docutils literal">make</code> and run this, it should do the same thing
+as before. We're not gonna load the offsets from memory because
+they're tiny (meaning it's much more of a chore to load them and
+add them to the base) <a class="footnote-reference brackets" href="baremetal-part-two.html#footnote-1" id="footnote-reference-1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> and, more importantly, they're guaranteed
+to never change relative to base and each other. We're also going
+to set UART up only once and won't change anything in the
+control register in the foreseeable future.</p>
+</section><section id="uart-safety-printing-and-you"><h2>UART Safety, Printing and You!</h2>
+<p>The PL011 UART is equipped with a flag register that can tell us
+what the UART is doing right now and how it's going, so we can
+poll it to see whether it's ready to take a byte from us to print
+or not. From a quick look at the docs we see that we need to
+test for whether <code class="docutils literal">UARTFR &amp; 0x28</code> returns true and wait until
+it isn't.</p>
+<p>We'll also want to compartmentalise the print into a procedure
+or function. This is going to mean we'll have to think about
+how to pass arguments to functions, since our <code class="docutils literal">putchar()</code>
+lookalike will consume a single byte that its caller will pass
+into it. Remember that spiel about calling conventions?</p>
+<p>We'll call the routine <code class="docutils literal">_uputc</code>, standing for "U(ART)-put-c(har)".</p>
+<p>We can write the function out in high-level pseudocode to see
+exactly what's going to have to happen:</p>
+<div class="code"><pre class="code c"><a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-1" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-1" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">_uputc</span><span class="p">(</span><span class="n">byte</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-2" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-2" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-2"></a><span class="p">{</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-3" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-3" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-3"></a><span class="w">        </span><span class="n">REGISTER</span><span class="w">  </span><span class="n">a</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-4" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-4" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-4"></a><span class="w">        </span><span class="n">REGISTER</span><span class="o">*</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">UARTDR</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-5" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-5" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-5"></a>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-6" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-6" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-6"></a><span class="w">        </span><span class="n">b</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mh">0x18</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-7" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-7" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-7"></a>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-8" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-8" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-8"></a><span class="w">        </span><span class="k">do</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-9" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-9" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-9"></a><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-10" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-10" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-10"></a><span class="w">                </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">b</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-11" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-11" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-11"></a><span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x28</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-12" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-12" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-12"></a>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-13" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-13" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-13"></a><span class="w">        </span><span class="n">b</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="mh">0x18</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-14" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-14" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-14"></a>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-15" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-15" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-15"></a><span class="w">        </span><span class="o">*</span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">x</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-16" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-16" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-16"></a>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-17" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-17" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-17"></a><span class="w">        </span><span class="k">return</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_a851b2ca1b3e4035b7067acdeb529c60-18" name="rest_code_a851b2ca1b3e4035b7067acdeb529c60-18" href="baremetal-part-two.html#rest_code_a851b2ca1b3e4035b7067acdeb529c60-18"></a><span class="p">}</span><span class="w"></span>
+</pre></div>
+<p>This immediately tells us we need three registers to store
+the UART flags (<code class="docutils literal">a</code>), the UART address (<code class="docutils literal">b</code>), and the
+argument to send to the UART data register (<code class="docutils literal">x</code>).</p>
+<section id="aarch64-specifics"><h3>Aarch64 specifics</h3>
+<p>Though massively simpler than the clusterfuck that is x86,
+Aarch64 has a lot of very unfunny specifics that are
+not documented in any user-friendly way. Just the Arm A-profile
+architecture reference manual is (as of right now) 11 530
+A4 pages, and going through dozens of thousands of pages
+looking for relevant info is not the easiest thing, especially
+if you have to repeat it.</p>
+<p>We're working with a more sophisticated Arm processor than the
+average embedded board has. This means there are significant
+memory and exception safety features that can be toggled on
+or off, and you can do about the same things in a Cortex-A that
+you can with x86 privilege rings. There are four rings in
+the standard, and not all devices need to implement all the
+levels—a CPU needs to have at least <code class="docutils literal">EL0</code> and <code class="docutils literal">EL1</code>.
+The higher the number, the more privilege we have executing
+code and shit.  We'll be staying in Exception Level One (<code class="docutils literal">EL1</code>),
+which is the highest QEMU provides normally. <a class="footnote-reference brackets" href="baremetal-part-two.html#footnote-2" id="footnote-reference-2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p>
+<p>One of the main funnies here is that Aarch64 really
+wants to enforce <em>stack alignment</em> to sixteen bytes, and if
+you try to access the <code class="docutils literal">SP</code> while it's unaligned you will,
+in most cases, brick your CPU for the time being since
+you can't recover from exceptions. To make sure this
+doesn't happen, you can either always align to 16 bytes, or
+disable this. We want to disable memory alignment fault
+exceptions in general, and we do this by playing with the
+<code class="docutils literal">SCTLR_EL1</code> system register.</p>
+<p>The instruction that reads from a system reg is <code class="docutils literal">mrs</code> and
+the one that writes to a system reg is <code class="docutils literal">msr</code>.
+Each takes one named register and one numbered
+general-purpose register as arguments, in a destination-source
+order.</p>
+<p>To disable these fault exceptions, we will use:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_3998eed367834c4f8ab88d10001f3089-1" name="rest_code_3998eed367834c4f8ab88d10001f3089-1" href="baremetal-part-two.html#rest_code_3998eed367834c4f8ab88d10001f3089-1"></a><span class="nf">mrs</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">SCTLR_EL1</span><span class="w"></span>
+<a id="rest_code_3998eed367834c4f8ab88d10001f3089-2" name="rest_code_3998eed367834c4f8ab88d10001f3089-2" href="baremetal-part-two.html#rest_code_3998eed367834c4f8ab88d10001f3089-2"></a><span class="nf">mov</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x1a</span><span class="w"></span>
+<a id="rest_code_3998eed367834c4f8ab88d10001f3089-3" name="rest_code_3998eed367834c4f8ab88d10001f3089-3" href="baremetal-part-two.html#rest_code_3998eed367834c4f8ab88d10001f3089-3"></a><span class="nf">neg</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="w"></span>
+<a id="rest_code_3998eed367834c4f8ab88d10001f3089-4" name="rest_code_3998eed367834c4f8ab88d10001f3089-4" href="baremetal-part-two.html#rest_code_3998eed367834c4f8ab88d10001f3089-4"></a><span class="nf">and</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="w"></span>
+<a id="rest_code_3998eed367834c4f8ab88d10001f3089-5" name="rest_code_3998eed367834c4f8ab88d10001f3089-5" href="baremetal-part-two.html#rest_code_3998eed367834c4f8ab88d10001f3089-5"></a><span class="nf">msr</span><span class="w"> </span><span class="no">SCTLR_EL1</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="w"></span>
+</pre></div>
+<p>This disables unaligned stack access faults, and
+register load/store misalignment faults, which makes
+working with the stack and with the heap quite a bit less
+headache-inducing.</p>
+<p>Unaligned stack access faults are especially annoying
+because this funny processor feature means that storing
+a single register on stack means you unknowingly get to
+brick the CPU very very easily. Programmer wisdom and
+developer references from the likes of Apple and wise
+guys from StackOverflow even tell you that you <em>must</em>
+keep the stack aligned and that there's no way around
+this, which is totally untrue. I don't know who thought
+this was a good idea.</p>
+<hr class="docutils">
+<p>We can't use the stack out of the box, though. Upon
+cold reset, the value of the SP <em>should</em> be zero, and
+on a warm reset it's 'an architecturally UNKNOWN value'
+as per the manual. This means that you just gotta set
+the stack up yourself every time you boot—though you
+have to do that in x86 as well so it's no big deal.</p>
+<p>Configuring the stack is not really that Big of a Deal.
+If you recall our linker script, we allocated an extra
+<code class="docutils literal">0x100000</code> bytes above our <code class="docutils literal">.data</code> and <code class="docutils literal">.bss</code> sections
+and assigned that to <code class="docutils literal">stack_top</code>. To set the stack pointer up
+we need to load this location's address into memory, then
+add four (since we will predecrement on push and postincrement
+on pop) to ensure we push to the very top of the space. This
+new value we'll then load into the <code class="docutils literal">sp</code> register, and the rest
+is handled by the assembler. The code is as simple as it gets:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_7ea98b0232224a5d97bd85148267d5e7-1" name="rest_code_7ea98b0232224a5d97bd85148267d5e7-1" href="baremetal-part-two.html#rest_code_7ea98b0232224a5d97bd85148267d5e7-1"></a><span class="w">    </span><span class="nf">ldr</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="err">=</span><span class="no">stack_top</span><span class="w"></span>
+<a id="rest_code_7ea98b0232224a5d97bd85148267d5e7-2" name="rest_code_7ea98b0232224a5d97bd85148267d5e7-2" href="baremetal-part-two.html#rest_code_7ea98b0232224a5d97bd85148267d5e7-2"></a><span class="w">    </span><span class="nf">add</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x4</span><span class="w"></span>
+<a id="rest_code_7ea98b0232224a5d97bd85148267d5e7-3" name="rest_code_7ea98b0232224a5d97bd85148267d5e7-3" href="baremetal-part-two.html#rest_code_7ea98b0232224a5d97bd85148267d5e7-3"></a><span class="nf">mov</span><span class="w"> </span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="w"></span>
+</pre></div>
+<p>We gave the kernel stack 1MB of memory to do what it
+wants with it. This is a relatively crude approach, but it gets
+the job done for now.</p>
+<p>Though for now it doesn't matter, we have to be careful
+with memory management way down the line. Because we're not
+using the MMU to its full capacity, our memory model is essentially
+flat as far as code and data are concerned. Aside from the memory-mapped
+devices below the <code class="docutils literal">0x40000000</code> address, where the device
+has mapped all the fancy stuff like UARTs and whatever,
+the MMU gave us the <code class="docutils literal">memory</code> device (RAM) starting at
+address <code class="docutils literal">0x40000000</code> and going on for <code class="docutils literal">0x10000000</code> bytes
+(configured through the commandline), and the <code class="docutils literal">flash</code> device
+starting at <code class="docutils literal">0x0</code> and ending at <code class="docutils literal">0x04000000</code>, which should
+store ROM but <em>we're not using it</em>. Our program code
+and data are all in the same flat memory space, with no
+mem management or segmentation, which means our code is
+writable, which means pushing too much onto the stack will mean
+actually overwriting the kernel.</p>
+<p>There's several ways of solving this, such as putting the stack below
+the kernel or at the top of RAM growing downwards into the heap, but
+neither of those are necessary right now really, because we won't
+be getting a megabyte of stack exhausted any time soon anyway.</p>
+</section><section id="back-to-uputc-byte-x"><h3>Back to <code class="docutils literal">_uputc(byte x)</code>
+</h3>
+<p>Fact is that, if we want to do any kind of compartmentalisation
+and shunting code off into subroutines, we have to be aware
+that we're now responsible for making a generic subroutine that
+will work independently of what called it, and that the code
+doesn't disrupt its caller's operation in any way.</p>
+<p>When you're generating a bunch of assembly automatically,
+this is where calling conventions come in handy: the compiler
+has a list of what it must, can and cannot do when getting two
+chunks of code to interact.</p>
+<p>Generally, calling conventions prioritise passing data through
+the register bank, since that's much faster than using memory
+for data transfers. When you run out of registers, you usually
+have to <em>spill</em> data onto the stack, and getting data to and from
+the stack is a lot slower than just working with RAM. Sometimes
+you see this in professional code (the Go compiler didn't know
+about register transfer until like 2020 I think), but generally
+you spill only when you have to.</p>
+<p>This convention starts mattering a little bit less when you're
+hand-writing both the callers and the subroutines: you can tune
+the data transfer mechanism per pair very accurately to reflect
+your needs in a way that compilers (still?) can't. Perhaps
+this one function will use registers <code class="docutils literal">x7</code> through <code class="docutils literal">x11</code>, while
+another will want <code class="docutils literal">q0</code> through <code class="docutils literal">q3</code> because of their larger
+size.</p>
+<p>The one constant is that the subroutine will always have to be
+called in a specific way. If you want to change how it's called,
+you have to either write boilerplate that maps this new
+call to what the subroutine understands, or write a new
+routine wholesale.</p>
+<p>This is a sacrifice that you <em>can</em> make very
+easily, and the way this works out for you is much like how C
+does it: you don't get overloading, name-mangling and resolution
+like in C++, and you'll have to give separate names to routines
+with the same functionality but different parameter schemes.</p>
+<p>On the other hand, we can just pass things in and out of
+routines using the stack. This simplifies the register saving
+dance at the expense of losing at least a few cycles here and
+there. Accessing cache is pretty fast, but still slower than
+accessing registers (I feel it's a factor of 4 kind of deal),
+so we gotta make it worth it.</p>
+<p>Luckily for us, Aarch64 gives us an unusually meaty powerful tool
+here. Despite actually lacking dedicated push and pop instructions
+that are around in 32-bit Arm, Aarch64 lets us load and store
+registers in pairs in a single instruction. We're thus gonna
+be using <code class="docutils literal">ldp</code> and <code class="docutils literal">stp</code> (and their variants where necessary)
+for this, in addition to using <code class="docutils literal">ldr</code> and <code class="docutils literal">str</code> for the generic
+register storage option.</p>
+<p>The load and store pair instructions work on all the registers,
+both integers (e.g. <code class="docutils literal">stp x1, x2, [sp, <span class="pre">#-16]!</span></code>) and vectors/floats
+(so, <code class="docutils literal">ldp q1, q2, [sp], #32</code>). This lets us transfer up to 256
+bits of memory in one go (assuming your CPU uses 128-bit NEON and
+not the bigger SVE registers that can go beyond 1024 bits), and
+not lose (m)any cycles doing it if the chunk is in cache. <a class="footnote-reference brackets" href="baremetal-part-two.html#footnote-3" id="footnote-reference-3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a></p>
+<p>So for this subroutine, we'll be saving the trashed registers
+to the stack and getting the argument from the stack.</p>
+<p>Let's revisit the pseudocode:</p>
+<div class="code"><pre class="code c"><a id="rest_code_d783a19713084175b0b9b481d8b9a040-1" name="rest_code_d783a19713084175b0b9b481d8b9a040-1" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">_uputc</span><span class="p">(</span><span class="n">byte</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-2" name="rest_code_d783a19713084175b0b9b481d8b9a040-2" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-2"></a><span class="p">{</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-3" name="rest_code_d783a19713084175b0b9b481d8b9a040-3" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-3"></a><span class="w">        </span><span class="n">REGISTER</span><span class="w">  </span><span class="n">a</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-4" name="rest_code_d783a19713084175b0b9b481d8b9a040-4" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-4"></a><span class="w">        </span><span class="n">REGISTER</span><span class="o">*</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">UARTDR</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-5" name="rest_code_d783a19713084175b0b9b481d8b9a040-5" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-5"></a>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-6" name="rest_code_d783a19713084175b0b9b481d8b9a040-6" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-6"></a><span class="w">        </span><span class="n">b</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mh">0x18</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-7" name="rest_code_d783a19713084175b0b9b481d8b9a040-7" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-7"></a>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-8" name="rest_code_d783a19713084175b0b9b481d8b9a040-8" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-8"></a><span class="w">        </span><span class="k">do</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-9" name="rest_code_d783a19713084175b0b9b481d8b9a040-9" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-9"></a><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-10" name="rest_code_d783a19713084175b0b9b481d8b9a040-10" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-10"></a><span class="w">                </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">b</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-11" name="rest_code_d783a19713084175b0b9b481d8b9a040-11" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-11"></a><span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x28</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-12" name="rest_code_d783a19713084175b0b9b481d8b9a040-12" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-12"></a>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-13" name="rest_code_d783a19713084175b0b9b481d8b9a040-13" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-13"></a><span class="w">        </span><span class="n">b</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="mh">0x18</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-14" name="rest_code_d783a19713084175b0b9b481d8b9a040-14" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-14"></a>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-15" name="rest_code_d783a19713084175b0b9b481d8b9a040-15" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-15"></a><span class="w">        </span><span class="o">*</span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">x</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-16" name="rest_code_d783a19713084175b0b9b481d8b9a040-16" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-16"></a>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-17" name="rest_code_d783a19713084175b0b9b481d8b9a040-17" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-17"></a><span class="w">        </span><span class="k">return</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_d783a19713084175b0b9b481d8b9a040-18" name="rest_code_d783a19713084175b0b9b481d8b9a040-18" href="baremetal-part-two.html#rest_code_d783a19713084175b0b9b481d8b9a040-18"></a><span class="p">}</span><span class="w"></span>
+</pre></div>
+<p>For this, we'll obviously need two registers to do
+the logic work for us, and one to store our argument.
+Since we have to save three registers, stack alignment
+has to be off—but we've luckily disabled it.</p>
+<p>In our caller code we'll have:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_0f23570f8dc644818354f401f91a17da-1" name="rest_code_0f23570f8dc644818354f401f91a17da-1" href="baremetal-part-two.html#rest_code_0f23570f8dc644818354f401f91a17da-1"></a><span class="nf">mov</span><span class="w"> </span><span class="no">x17</span><span class="p">,</span><span class="w"> </span><span class="mi">0x48</span><span class="w">        </span><span class="c1">// the character 'H'</span>
+<a id="rest_code_0f23570f8dc644818354f401f91a17da-2" name="rest_code_0f23570f8dc644818354f401f91a17da-2" href="baremetal-part-two.html#rest_code_0f23570f8dc644818354f401f91a17da-2"></a><span class="nf">str</span><span class="w"> </span><span class="no">x17</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w">   </span><span class="c1">// our output argument</span>
+<a id="rest_code_0f23570f8dc644818354f401f91a17da-3" name="rest_code_0f23570f8dc644818354f401f91a17da-3" href="baremetal-part-two.html#rest_code_0f23570f8dc644818354f401f91a17da-3"></a><span class="nf">bl</span><span class="w"> </span><span class="no">_uputc</span><span class="w"></span>
+</pre></div>
+<p>Essentially, it doesn't matter which register we get
+the argument from, so that the subroutine will always
+see the argument on the stack and the caller won't
+have to bend over backwards to get the argument
+into a specific register.</p>
+<p>The subroutine will then look like this:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_c02acb32844e46228ff11168191d121c-1" name="rest_code_c02acb32844e46228ff11168191d121c-1" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-1"></a><span class="c1">// our print function</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-2" name="rest_code_c02acb32844e46228ff11168191d121c-2" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-2"></a><span class="c1">// takes 1 arg on stack, returns 0</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-3" name="rest_code_c02acb32844e46228ff11168191d121c-3" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-3"></a><span class="c1">// trashes 3 registers</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-4" name="rest_code_c02acb32844e46228ff11168191d121c-4" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-4"></a><span class="nl">_uputc:</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-5" name="rest_code_c02acb32844e46228ff11168191d121c-5" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-5"></a><span class="w">        </span><span class="nf">stp</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-16</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-6" name="rest_code_c02acb32844e46228ff11168191d121c-6" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-6"></a><span class="w">        </span><span class="nf">str</span><span class="w">  </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-7" name="rest_code_c02acb32844e46228ff11168191d121c-7" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-7"></a>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-8" name="rest_code_c02acb32844e46228ff11168191d121c-8" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-8"></a><span class="w">        </span><span class="nf">ldr</span><span class="w">  </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">24</span><span class="p">]</span><span class="w">    </span><span class="c1">// this is where we first pushed</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-9" name="rest_code_c02acb32844e46228ff11168191d121c-9" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-9"></a><span class="w">                             </span><span class="c1">// the argument in the caller</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-10" name="rest_code_c02acb32844e46228ff11168191d121c-10" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-10"></a>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-11" name="rest_code_c02acb32844e46228ff11168191d121c-11" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-11"></a><span class="w">        </span><span class="nf">adrp</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">UART_BASE</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-12" name="rest_code_c02acb32844e46228ff11168191d121c-12" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-12"></a><span class="w">        </span><span class="nf">add</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="p">:</span><span class="no">lo12</span><span class="p">:</span><span class="no">UART_BASE</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-13" name="rest_code_c02acb32844e46228ff11168191d121c-13" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-13"></a><span class="w">        </span><span class="nf">ldr</span><span class="w">  </span><span class="no">w0</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-14" name="rest_code_c02acb32844e46228ff11168191d121c-14" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-14"></a><span class="w">                        </span><span class="c1">// now x0 has the UART_BASE location</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-15" name="rest_code_c02acb32844e46228ff11168191d121c-15" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-15"></a>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-16" name="rest_code_c02acb32844e46228ff11168191d121c-16" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-16"></a><span class="w">        </span><span class="nf">add</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x18</span><span class="w">    </span><span class="c1">// UART_FLAG address</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-17" name="rest_code_c02acb32844e46228ff11168191d121c-17" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-17"></a>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-18" name="rest_code_c02acb32844e46228ff11168191d121c-18" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-18"></a><span class="w">        </span><span class="nl">_uputc_loop1:</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-19" name="rest_code_c02acb32844e46228ff11168191d121c-19" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-19"></a><span class="w">                </span><span class="nf">ldr</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w">          </span><span class="c1">// read from UART_FLAG</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-20" name="rest_code_c02acb32844e46228ff11168191d121c-20" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-20"></a><span class="w">                </span><span class="nf">and</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w">      </span><span class="c1">// 0010 1000 = busy &amp; transmit full</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-21" name="rest_code_c02acb32844e46228ff11168191d121c-21" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-21"></a><span class="w">                </span><span class="nf">bic</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xc0</span><span class="w">      </span><span class="c1">// but we gotta do it the long way</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-22" name="rest_code_c02acb32844e46228ff11168191d121c-22" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-22"></a><span class="w">                </span><span class="nf">bic</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x10</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-23" name="rest_code_c02acb32844e46228ff11168191d121c-23" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-23"></a><span class="w">                </span><span class="nf">bic</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x07</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-24" name="rest_code_c02acb32844e46228ff11168191d121c-24" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-24"></a><span class="w">        </span><span class="nf">cbnz</span><span class="w"> </span><span class="no">_uputc_loop1</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-25" name="rest_code_c02acb32844e46228ff11168191d121c-25" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-25"></a>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-26" name="rest_code_c02acb32844e46228ff11168191d121c-26" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-26"></a><span class="w">        </span><span class="nf">sub</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x18</span><span class="w">      </span><span class="c1">// back to BASE / DATA</span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-27" name="rest_code_c02acb32844e46228ff11168191d121c-27" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-27"></a><span class="w">        </span><span class="nf">str</span><span class="w">  </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-28" name="rest_code_c02acb32844e46228ff11168191d121c-28" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-28"></a>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-29" name="rest_code_c02acb32844e46228ff11168191d121c-29" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-29"></a><span class="w">        </span><span class="nf">ldr</span><span class="w">  </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">],</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-30" name="rest_code_c02acb32844e46228ff11168191d121c-30" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-30"></a><span class="w">        </span><span class="nf">ldp</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">],</span><span class="w"> </span><span class="mi">16</span><span class="w"></span>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-31" name="rest_code_c02acb32844e46228ff11168191d121c-31" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-31"></a>
+<a id="rest_code_c02acb32844e46228ff11168191d121c-32" name="rest_code_c02acb32844e46228ff11168191d121c-32" href="baremetal-part-two.html#rest_code_c02acb32844e46228ff11168191d121c-32"></a><span class="w">        </span><span class="nf">ret</span><span class="w"></span>
+</pre></div>
+<p>You'll note that Aarch64 is especially retarded when it
+comes to immediates for bitwise operations, in that they have
+to be a mask with a bit pattern of some sort, and not actual
+immediates like in arithmetic operations. The block of four
+logical ops basically performs the check <code class="docutils literal">and x1, x1, 0x28</code>
+but that will not fit into the immediate field here. The
+<code class="docutils literal">bic</code> instruction is basically a form of <code class="docutils literal">a &amp; ~b</code> that's
+convenient for toggling some specific bits off.</p>
+<p>We can actually do some optimisation here and save
+one register, though the stack will still be unaligned:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-1" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-1" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-1"></a><span class="c1">// our print function</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-2" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-2" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-2"></a><span class="c1">// takes 1 arg on stack, returns 0</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-3" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-3" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-3"></a><span class="c1">// trashes 2 registers</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-4" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-4" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-4"></a><span class="nl">_uputc:</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-5" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-5" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-5"></a><span class="w">        </span><span class="nf">stp</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-16</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-6" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-6" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-6"></a>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-7" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-7" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-7"></a><span class="w">        </span><span class="nf">adrp</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">UART_BASE</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-8" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-8" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-8"></a><span class="w">        </span><span class="nf">add</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="p">:</span><span class="no">lo12</span><span class="p">:</span><span class="no">UART_BASE</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-9" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-9" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-9"></a><span class="w">        </span><span class="nf">ldr</span><span class="w">  </span><span class="no">w0</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-10" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-10" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-10"></a><span class="w">                        </span><span class="c1">// now x0 has the UART_BASE location</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-11" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-11" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-11"></a>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-12" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-12" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-12"></a><span class="w">        </span><span class="nf">add</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x18</span><span class="w">    </span><span class="c1">// UART_FLAG address</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-13" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-13" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-13"></a>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-14" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-14" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-14"></a><span class="w">        </span><span class="nl">_uputc_loop1:</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-15" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-15" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-15"></a><span class="w">                </span><span class="nf">ldr</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w">          </span><span class="c1">// read from UART_FLAG</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-16" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-16" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-16"></a><span class="w">                </span><span class="nf">and</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w">      </span><span class="c1">// 0010 1000 = busy &amp; transmit full</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-17" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-17" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-17"></a><span class="w">                </span><span class="nf">bic</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xc0</span><span class="w">      </span><span class="c1">// but we gotta do it the long way</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-18" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-18" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-18"></a><span class="w">                </span><span class="nf">bic</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x10</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-19" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-19" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-19"></a><span class="w">                </span><span class="nf">bic</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0x07</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-20" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-20" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-20"></a><span class="w">        </span><span class="nf">cbnz</span><span class="w"> </span><span class="no">_uputc_loop1</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-21" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-21" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-21"></a>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-22" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-22" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-22"></a><span class="w">        </span><span class="nf">sub</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">0x18</span><span class="w">      </span><span class="c1">// back to BASE / DATA</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-23" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-23" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-23"></a><span class="w">        </span><span class="nf">ldr</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">16</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-24" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-24" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-24"></a><span class="w">        </span><span class="nf">str</span><span class="w">  </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-25" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-25" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-25"></a>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-26" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-26" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-26"></a><span class="w">        </span><span class="nf">ldp</span><span class="w">  </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">],</span><span class="w"> </span><span class="mi">16</span><span class="w"></span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-27" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-27" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-27"></a><span class="w">        </span><span class="nf">add</span><span class="w">  </span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w">         </span><span class="c1">// pop the argument off the stack</span>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-28" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-28" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-28"></a>
+<a id="rest_code_4cbb2f5c25c54af2be123c358f573a80-29" name="rest_code_4cbb2f5c25c54af2be123c358f573a80-29" href="baremetal-part-two.html#rest_code_4cbb2f5c25c54af2be123c358f573a80-29"></a><span class="w">        </span><span class="nf">ret</span><span class="w"></span>
+</pre></div>
+<p>An optimisation assembly affords us that we can't
+intentionally get in C is the ability to destructively
+reuse registers when their data's lifetime's up. A half-decent
+C compiler would do this optimisation for you automatically,
+but this isn't something you can specify through the language
+itself.</p>
+</section></section><section id="nested-function-calls"><h2>Nested function calls</h2>
+<p>A peculiarity of the Aarch64 ISA is that the <code class="docutils literal">bl</code> instruction
+lets us do branches to subroutines without any memory access,
+which is extremely good. The way it works is that it stores
+the address of the instruction it's accessing + 4 into the
+register <code class="docutils literal">x30</code>, then jumping to the label we give it.
+Correspondingly, we return from the subroutine we jumped
+to using the <code class="docutils literal">ret</code> instruction, which jumps to the address
+stored in <code class="docutils literal">x30</code> (i.e. it's an alias).</p>
+<p>Predictably, this means that you can only <code class="docutils literal">bl</code> exactly once
+before you trash your original return address.</p>
+<p>This pair of instructions has its advantages over the x86
+<code class="docutils literal">call</code> and <code class="docutils literal">ret</code> pair—no stack access is performed and
+things are kept fast, but you have to write the nesting code yourself
+and that gets kind of nasty kind of quickly.</p>
+<p>We can thus absolutely avoid having to use the stack for
+subroutine calls that are one-deep, which saves on memory
+at the expense of losing a register.</p>
+<p>The next function we'll write will have to call another function
+and so we'll have to write nesting code.</p>
+<section id="extending-into-uputs-byte-x"><h3>Extending into <code class="docutils literal">_uputs(byte* x)</code>
+</h3>
+<p>Printing one byte at a time is definitely something we <em>can</em>
+but <em>shouldn't</em> do. It's inconvenient on its own, really. To
+exemplify function call nesting and to clear up this mess, we
+will write a <code class="docutils literal">_uputs</code> function—that is, "U(ART)-put-s(tring)".
+The function will take one argument, a zero-terminated C-style
+string of bytes from memory, and print it out byte by byte until
+we reach zero.</p>
+<p>We'll try to minimalise memory accesses as much as possible,
+which means doing funny shit with registers. For example, the following
+pseudocode would be a good scheme to implement:</p>
+<div class="code"><pre class="code c"><a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-1" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-1" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">_uputs</span><span class="p">(</span><span class="n">byte</span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-2" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-2" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-2"></a><span class="p">{</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-3" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-3" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-3"></a><span class="w">        </span><span class="n">REGISTER</span><span class="w">  </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">x</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-4" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-4" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-4"></a><span class="w">        </span><span class="n">REGISTER</span><span class="w">  </span><span class="n">b</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-5" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-5" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-5"></a>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-6" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-6" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-6"></a><span class="w">        </span><span class="k">do</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-7" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-7" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-7"></a><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-8" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-8" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-8"></a><span class="w">                </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xff</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-9" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-9" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-9"></a><span class="w">                </span><span class="n">_uputc</span><span class="p">(</span><span class="n">b</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-10" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-10" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-10"></a><span class="w">                </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">8</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-11" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-11" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-11"></a><span class="w">                </span><span class="k">if</span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-12" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-12" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-12"></a><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-13" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-13" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-13"></a><span class="w">                        </span><span class="n">x</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">8</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-14" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-14" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-14"></a><span class="w">                        </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">x</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-15" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-15" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-15"></a><span class="w">                </span><span class="p">}</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-16" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-16" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-16"></a><span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">while</span><span class="p">(</span><span class="n">b</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mh">0x00</span><span class="p">);</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-17" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-17" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-17"></a>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-18" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-18" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-18"></a><span class="w">        </span><span class="k">return</span><span class="p">;</span><span class="w"></span>
+<a id="rest_code_16557150c76b4b8e92da736e8fd2cf28-19" name="rest_code_16557150c76b4b8e92da736e8fd2cf28-19" href="baremetal-part-two.html#rest_code_16557150c76b4b8e92da736e8fd2cf28-19"></a><span class="p">}</span><span class="w"></span>
+</pre></div>
+<p>We'll be reading memory in 8-byte chunks
+at a time, meaning we'll need to do only one
+access per 8 characters (remember, the UART is
+an 8-bit interface). If we haven't
+reached a zero character, we call the <code class="docutils literal">_uputc</code>
+and let it handle the print on its own, abstracted
+away from our eyes.</p>
+<p>In assembly, we have some more things to think of,
+such as storing the <code class="docutils literal">x30</code> on the stack alongside
+the other registers in use. We <em>don't</em> have to
+think about how long our string is, though.</p>
+<p>Reading 64-bit chunks of memory at once could be
+"potentially dangerous" i.e. we could be leaking
+secret memory or whatever if someone checks
+register states when they're not supposed to,
+but since the memory model is flat and unprotected,
+there won't be any <em>hardware</em> faults to think about
+too hard.</p>
+<p>Our code should now look like this:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_fbbe3dc33646427899d6cf8752886af9-1" name="rest_code_fbbe3dc33646427899d6cf8752886af9-1" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-1"></a><span class="c1">// handler for string printing</span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-2" name="rest_code_fbbe3dc33646427899d6cf8752886af9-2" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-2"></a><span class="c1">// takes 1 arg on stack, returns 0</span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-3" name="rest_code_fbbe3dc33646427899d6cf8752886af9-3" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-3"></a><span class="c1">// trashes 4 registers</span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-4" name="rest_code_fbbe3dc33646427899d6cf8752886af9-4" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-4"></a><span class="nl">_uputs:</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-5" name="rest_code_fbbe3dc33646427899d6cf8752886af9-5" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-5"></a><span class="w">        </span><span class="nf">stp</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-16</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-6" name="rest_code_fbbe3dc33646427899d6cf8752886af9-6" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-6"></a><span class="w">        </span><span class="nf">stp</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x30</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-16</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-7" name="rest_code_fbbe3dc33646427899d6cf8752886af9-7" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-7"></a><span class="w">        </span><span class="nf">ldr</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">32</span><span class="p">]</span><span class="w">    </span><span class="c1">// the string address</span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-8" name="rest_code_fbbe3dc33646427899d6cf8752886af9-8" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-8"></a><span class="w">        </span><span class="nl">_uputs_loop1:</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-9" name="rest_code_fbbe3dc33646427899d6cf8752886af9-9" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-9"></a><span class="w">                </span><span class="nf">ldr</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">x0</span><span class="p">]</span><span class="w">                  </span><span class="c1">// the initial memory read</span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-10" name="rest_code_fbbe3dc33646427899d6cf8752886af9-10" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-10"></a><span class="w">                </span><span class="nf">cbz</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">_uputs_loop1_end</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-11" name="rest_code_fbbe3dc33646427899d6cf8752886af9-11" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-11"></a><span class="w">                </span><span class="nf">and</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w">              </span><span class="c1">// extract byte</span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-12" name="rest_code_fbbe3dc33646427899d6cf8752886af9-12" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-12"></a><span class="w">                </span><span class="nf">cbz</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_uputs_loop1_end</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-13" name="rest_code_fbbe3dc33646427899d6cf8752886af9-13" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-13"></a><span class="w">                </span><span class="nf">str</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-14" name="rest_code_fbbe3dc33646427899d6cf8752886af9-14" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-14"></a><span class="w">                </span><span class="nf">bl</span><span class="w">  </span><span class="no">_uputc</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-15" name="rest_code_fbbe3dc33646427899d6cf8752886af9-15" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-15"></a>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-16" name="rest_code_fbbe3dc33646427899d6cf8752886af9-16" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-16"></a><span class="w">                </span><span class="nf">asr</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-17" name="rest_code_fbbe3dc33646427899d6cf8752886af9-17" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-17"></a><span class="w">                </span><span class="nf">and</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-18" name="rest_code_fbbe3dc33646427899d6cf8752886af9-18" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-18"></a><span class="w">                </span><span class="nf">cbz</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_uputs_loop1_end</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-19" name="rest_code_fbbe3dc33646427899d6cf8752886af9-19" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-19"></a><span class="w">                </span><span class="nf">str</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-20" name="rest_code_fbbe3dc33646427899d6cf8752886af9-20" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-20"></a><span class="w">                </span><span class="nf">bl</span><span class="w">  </span><span class="no">_uputc</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-21" name="rest_code_fbbe3dc33646427899d6cf8752886af9-21" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-21"></a>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-22" name="rest_code_fbbe3dc33646427899d6cf8752886af9-22" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-22"></a><span class="w">                </span><span class="nf">asr</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-23" name="rest_code_fbbe3dc33646427899d6cf8752886af9-23" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-23"></a><span class="w">                </span><span class="nf">and</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-24" name="rest_code_fbbe3dc33646427899d6cf8752886af9-24" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-24"></a><span class="w">                </span><span class="nf">cbz</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_uputs_loop1_end</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-25" name="rest_code_fbbe3dc33646427899d6cf8752886af9-25" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-25"></a><span class="w">                </span><span class="nf">str</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-26" name="rest_code_fbbe3dc33646427899d6cf8752886af9-26" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-26"></a><span class="w">                </span><span class="nf">bl</span><span class="w">  </span><span class="no">_uputc</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-27" name="rest_code_fbbe3dc33646427899d6cf8752886af9-27" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-27"></a>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-28" name="rest_code_fbbe3dc33646427899d6cf8752886af9-28" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-28"></a><span class="w">                </span><span class="nf">asr</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-29" name="rest_code_fbbe3dc33646427899d6cf8752886af9-29" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-29"></a><span class="w">                </span><span class="nf">and</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-30" name="rest_code_fbbe3dc33646427899d6cf8752886af9-30" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-30"></a><span class="w">                </span><span class="nf">cbz</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_uputs_loop1_end</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-31" name="rest_code_fbbe3dc33646427899d6cf8752886af9-31" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-31"></a><span class="w">                </span><span class="nf">str</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-32" name="rest_code_fbbe3dc33646427899d6cf8752886af9-32" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-32"></a><span class="w">                </span><span class="nf">bl</span><span class="w">  </span><span class="no">_uputc</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-33" name="rest_code_fbbe3dc33646427899d6cf8752886af9-33" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-33"></a>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-34" name="rest_code_fbbe3dc33646427899d6cf8752886af9-34" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-34"></a><span class="w">                </span><span class="nf">asr</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-35" name="rest_code_fbbe3dc33646427899d6cf8752886af9-35" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-35"></a><span class="w">                </span><span class="nf">and</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-36" name="rest_code_fbbe3dc33646427899d6cf8752886af9-36" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-36"></a><span class="w">                </span><span class="nf">cbz</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_uputs_loop1_end</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-37" name="rest_code_fbbe3dc33646427899d6cf8752886af9-37" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-37"></a><span class="w">                </span><span class="nf">str</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-38" name="rest_code_fbbe3dc33646427899d6cf8752886af9-38" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-38"></a><span class="w">                </span><span class="nf">bl</span><span class="w">  </span><span class="no">_uputc</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-39" name="rest_code_fbbe3dc33646427899d6cf8752886af9-39" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-39"></a>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-40" name="rest_code_fbbe3dc33646427899d6cf8752886af9-40" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-40"></a><span class="w">                </span><span class="nf">asr</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-41" name="rest_code_fbbe3dc33646427899d6cf8752886af9-41" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-41"></a><span class="w">                </span><span class="nf">and</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-42" name="rest_code_fbbe3dc33646427899d6cf8752886af9-42" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-42"></a><span class="w">                </span><span class="nf">cbz</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_uputs_loop1_end</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-43" name="rest_code_fbbe3dc33646427899d6cf8752886af9-43" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-43"></a><span class="w">                </span><span class="nf">str</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-44" name="rest_code_fbbe3dc33646427899d6cf8752886af9-44" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-44"></a><span class="w">                </span><span class="nf">bl</span><span class="w">  </span><span class="no">_uputc</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-45" name="rest_code_fbbe3dc33646427899d6cf8752886af9-45" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-45"></a>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-46" name="rest_code_fbbe3dc33646427899d6cf8752886af9-46" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-46"></a><span class="w">                </span><span class="nf">asr</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-47" name="rest_code_fbbe3dc33646427899d6cf8752886af9-47" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-47"></a><span class="w">                </span><span class="nf">and</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-48" name="rest_code_fbbe3dc33646427899d6cf8752886af9-48" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-48"></a><span class="w">                </span><span class="nf">cbz</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_uputs_loop1_end</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-49" name="rest_code_fbbe3dc33646427899d6cf8752886af9-49" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-49"></a><span class="w">                </span><span class="nf">str</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-50" name="rest_code_fbbe3dc33646427899d6cf8752886af9-50" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-50"></a><span class="w">                </span><span class="nf">bl</span><span class="w">  </span><span class="no">_uputc</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-51" name="rest_code_fbbe3dc33646427899d6cf8752886af9-51" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-51"></a>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-52" name="rest_code_fbbe3dc33646427899d6cf8752886af9-52" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-52"></a><span class="w">                </span><span class="nf">asr</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-53" name="rest_code_fbbe3dc33646427899d6cf8752886af9-53" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-53"></a><span class="w">                </span><span class="nf">and</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w"> </span><span class="mi">0xff</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-54" name="rest_code_fbbe3dc33646427899d6cf8752886af9-54" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-54"></a><span class="w">                </span><span class="nf">cbz</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">_uputs_loop1_end</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-55" name="rest_code_fbbe3dc33646427899d6cf8752886af9-55" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-55"></a><span class="w">                </span><span class="nf">str</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-56" name="rest_code_fbbe3dc33646427899d6cf8752886af9-56" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-56"></a><span class="w">                </span><span class="nf">bl</span><span class="w">  </span><span class="no">_uputc</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-57" name="rest_code_fbbe3dc33646427899d6cf8752886af9-57" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-57"></a>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-58" name="rest_code_fbbe3dc33646427899d6cf8752886af9-58" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-58"></a><span class="w">                </span><span class="nf">add</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w">             </span><span class="c1">// shift pointer by 8, and loop</span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-59" name="rest_code_fbbe3dc33646427899d6cf8752886af9-59" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-59"></a><span class="w">                </span><span class="nf">b</span><span class="w"> </span><span class="no">_uputs_loop1</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-60" name="rest_code_fbbe3dc33646427899d6cf8752886af9-60" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-60"></a><span class="w">        </span><span class="nl">_uputs_loop1_end:</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-61" name="rest_code_fbbe3dc33646427899d6cf8752886af9-61" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-61"></a><span class="w">        </span><span class="nf">ldp</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="no">x30</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">],</span><span class="w"> </span><span class="mi">16</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-62" name="rest_code_fbbe3dc33646427899d6cf8752886af9-62" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-62"></a><span class="w">        </span><span class="nf">ldp</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="p">,</span><span class="w">  </span><span class="p">[</span><span class="no">sp</span><span class="p">],</span><span class="w"> </span><span class="mi">16</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-63" name="rest_code_fbbe3dc33646427899d6cf8752886af9-63" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-63"></a><span class="w">        </span><span class="nf">add</span><span class="w"> </span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_fbbe3dc33646427899d6cf8752886af9-64" name="rest_code_fbbe3dc33646427899d6cf8752886af9-64" href="baremetal-part-two.html#rest_code_fbbe3dc33646427899d6cf8752886af9-64"></a><span class="nf">ret</span><span class="w"></span>
+</pre></div>
+<p>Instead of reading a byte at a time, we're
+reading eight, and then doing a call on each
+byte of the register at a time. This reduces
+the number of memory accesses by 7 (every eighth
+step instead of every step of the loop), which
+is helpful when <code class="docutils literal">_uputc</code> already does
+at least 6 memory ops (and potentially more) every single call.
+I even unrolled a loop manually to save
+a register that would otherwise have
+gone to waste as a counter. You don't need
+to do this, but it saves us a few instructions
+and, despite being longer code, will run in fewer
+cycles because we avoided two more stack accesses.</p>
+<p>This function is called more or less the same
+as the previous one, except now you need
+to get the address instead of just passing the argument
+raw on the stack:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_aef9231fe2054fa5ad8ce18c00d21620-1" name="rest_code_aef9231fe2054fa5ad8ce18c00d21620-1" href="baremetal-part-two.html#rest_code_aef9231fe2054fa5ad8ce18c00d21620-1"></a><span class="nl">EXAMPLE_STRING:</span><span class="w"> </span><span class="na">.asciz</span><span class="w"> </span><span class="s">"Hello, world! "</span><span class="w"></span>
+<a id="rest_code_aef9231fe2054fa5ad8ce18c00d21620-2" name="rest_code_aef9231fe2054fa5ad8ce18c00d21620-2" href="baremetal-part-two.html#rest_code_aef9231fe2054fa5ad8ce18c00d21620-2"></a><span class="w">        </span><span class="na">.align</span><span class="w"> </span><span class="mi">8</span><span class="w"></span>
+<a id="rest_code_aef9231fe2054fa5ad8ce18c00d21620-3" name="rest_code_aef9231fe2054fa5ad8ce18c00d21620-3" href="baremetal-part-two.html#rest_code_aef9231fe2054fa5ad8ce18c00d21620-3"></a>
+<a id="rest_code_aef9231fe2054fa5ad8ce18c00d21620-4" name="rest_code_aef9231fe2054fa5ad8ce18c00d21620-4" href="baremetal-part-two.html#rest_code_aef9231fe2054fa5ad8ce18c00d21620-4"></a><span class="w">        </span><span class="na">...</span><span class="w"></span>
+<a id="rest_code_aef9231fe2054fa5ad8ce18c00d21620-5" name="rest_code_aef9231fe2054fa5ad8ce18c00d21620-5" href="baremetal-part-two.html#rest_code_aef9231fe2054fa5ad8ce18c00d21620-5"></a>
+<a id="rest_code_aef9231fe2054fa5ad8ce18c00d21620-6" name="rest_code_aef9231fe2054fa5ad8ce18c00d21620-6" href="baremetal-part-two.html#rest_code_aef9231fe2054fa5ad8ce18c00d21620-6"></a><span class="nf">ldr</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="err">=</span><span class="no">EXAMPLE_STRING</span><span class="w"></span>
+<a id="rest_code_aef9231fe2054fa5ad8ce18c00d21620-7" name="rest_code_aef9231fe2054fa5ad8ce18c00d21620-7" href="baremetal-part-two.html#rest_code_aef9231fe2054fa5ad8ce18c00d21620-7"></a><span class="nf">str</span><span class="w"> </span><span class="no">x2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="no">sp</span><span class="p">,</span><span class="w"> </span><span class="mi">-8</span><span class="p">]!</span><span class="w"></span>
+<a id="rest_code_aef9231fe2054fa5ad8ce18c00d21620-8" name="rest_code_aef9231fe2054fa5ad8ce18c00d21620-8" href="baremetal-part-two.html#rest_code_aef9231fe2054fa5ad8ce18c00d21620-8"></a><span class="nf">bl</span><span class="w"> </span><span class="no">_uputs</span><span class="w"></span>
+</pre></div>
+<hr class="docutils">
+<p>You can avoid this nested call by writing the
+<code class="docutils literal">_uputs()</code> function so that it itself
+writes to UART without having to call a
+subroutine to do that work. This would both
+be more efficient and go faster (think of it
+like inlining a function manually), but I feel
+like it suffers from readability.</p>
+<p>Ultimately, we're not squeezing cycles from a
+dry stone, there's much more we could do to
+optimise these things that we aren't doing because
+the tradeoffs are too severe.</p>
+</section></section><section id="extra-features"><h2>Extra features</h2>
+<p>There's a few more things we can do to make
+the environment a bit more fully-featured. For
+example, the floating-point unit is by default disabled
+on boot, so we have to enable it by fiddling with
+the built-in system control registers:</p>
+<div class="code"><pre class="code asm"><a id="rest_code_863301c97c9c479fb9d5ae8512030165-1" name="rest_code_863301c97c9c479fb9d5ae8512030165-1" href="baremetal-part-two.html#rest_code_863301c97c9c479fb9d5ae8512030165-1"></a><span class="nf">mov</span><span class="w"> </span><span class="no">x0</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="mi">0x3</span><span class="w"> </span><span class="err">&lt;&lt;</span><span class="w"> </span><span class="mi">20</span><span class="p">)</span><span class="w"></span>
+<a id="rest_code_863301c97c9c479fb9d5ae8512030165-2" name="rest_code_863301c97c9c479fb9d5ae8512030165-2" href="baremetal-part-two.html#rest_code_863301c97c9c479fb9d5ae8512030165-2"></a>
+<a id="rest_code_863301c97c9c479fb9d5ae8512030165-3" name="rest_code_863301c97c9c479fb9d5ae8512030165-3" href="baremetal-part-two.html#rest_code_863301c97c9c479fb9d5ae8512030165-3"></a><span class="c1">// msr cptr_el3, xzr</span>
+<a id="rest_code_863301c97c9c479fb9d5ae8512030165-4" name="rest_code_863301c97c9c479fb9d5ae8512030165-4" href="baremetal-part-two.html#rest_code_863301c97c9c479fb9d5ae8512030165-4"></a><span class="c1">// msr cptr_el2, xzr</span>
+<a id="rest_code_863301c97c9c479fb9d5ae8512030165-5" name="rest_code_863301c97c9c479fb9d5ae8512030165-5" href="baremetal-part-two.html#rest_code_863301c97c9c479fb9d5ae8512030165-5"></a><span class="nf">msr</span><span class="w"> </span><span class="no">cpacr_el1</span><span class="p">,</span><span class="w"> </span><span class="no">x1</span><span class="w"></span>
+</pre></div>
+<p>We don't have EL3 and EL2 support in our CPU, it only
+goes up to EL1, but I'm including the higher EL code
+anyway for your convenience for when you play with
+real hardware.</p>
+<p>In QEMU, you can now type <code class="docutils literal">info registers</code> to see
+a whole new table of vector regs has just appeared
+and is initialised to zero.</p>
+<p>One other interesting feature that the Aarch64 platform
+provides in Cortex-A CPUs, mostly the newer ones, is the
+ability to generate random numbers in the hardware.</p>
+<p>To see whether you have RNG capability or not you're
+supposed to read from the <code class="docutils literal">ID_AA64ISAR0_EL1</code> register.
+If <code class="docutils literal">mrs x10, ID_AA64ISAR0_EL1; and x10, x10, 0x1000000000000000</code>
+returns true, your CPU has the registers <code class="docutils literal">RNDR</code> and <code class="docutils literal">RNDRRS</code>
+implemented. The CPU will then provide you with a
+random number when you do <code class="docutils literal">mrs x10, RNDR</code>—or at least, it
+theoretically should!</p>
+<p>But <img alt="BroFrustration" src="../emoji/brofrustration.png" style="width: 32px;"> the GNU <code class="docutils literal">binutils</code> don't even fucking work,
+they don't recognise some register names and error out for
+<em>no fucking reason</em>, so you have to actually poll that register
+using its internal encoding name, which in this case is going to be
+<code class="docutils literal">mrs x10, s3_3_c2_c4_0</code>. This should provide you with a
+random number in <code class="docutils literal">x10</code>, which QEMU in turn sources from the OS.</p>
+<hr class="docutils">
+<aside class="footnote-list brackets"><aside class="footnote brackets" id="footnote-1" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-two.html#footnote-reference-1">1</a><span class="fn-bracket">]</span></span>
+<p>To load them you need to use up at least one more register
+and will need three more instructions; you're looking at something
+at least like <code class="docutils literal">adrp x2, UART_CNTL; add x2, x2, :lo12:UART_CNTL;
+ldrb x2, [x2]; add x0, x0, x2</code> while you could just do
+<code class="docutils literal">add x0, x0, 0x30</code> instead.</p>
+</aside><aside class="footnote brackets" id="footnote-2" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-two.html#footnote-reference-2">2</a><span class="fn-bracket">]</span></span>
+<p>You can check your exception level by doing <code class="docutils literal">msr x1, CurrentEL</code>
+to get the value and <code class="docutils literal">lsr x1, x1, 2</code> to extract it since it's not
+in the lowest two bits. There's a whole bunch of these unmapped
+internal registers on Cortex-A CPUs, and you can read more about
+them here: <a class="reference external" href="https://developer.arm.com/documentation/ddi0595/2021-12/AArch64-Registers">https://developer.arm.com/documentation/ddi0595/2021-12/AArch64-Registers</a></p>
+</aside><aside class="footnote brackets" id="footnote-3" role="note"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="baremetal-part-two.html#footnote-reference-3">3</a><span class="fn-bracket">]</span></span>
+<p>There's a
+further trick with the vector instructions, which is to use
+the <code class="docutils literal">st1</code> and <code class="docutils literal">ld1</code> instructions, to load up to four vector
+registers (512 bits!) from memory at once (<code class="docutils literal">ld1 {v0.2d, v1.2d, v2.2d, v3.2d}, [sp, <span class="pre">#-64]!</span></code>),
+or even the SVE/SVE2 junk with <code class="docutils literal">addvl sp, sp, <span class="pre">#-4;</span> str z1, [sp, #4, MUL VL]</code> which
+can net you 1024 bits of storage at once,
+but that's quite overkill for us right now. According to the manual
+the <code class="docutils literal">ld1</code> of four NEON regs takes 8 cycles, and the <code class="docutils literal">ldp</code> of two NEON regs takes
+6 cycles, which means you can save 4 cycles if you use the other kind of store. This kind of
+microoptimisation is not necessary when working in QEMU, but remember that usually
+the less code you write, the better your code will be.</p>
+</aside></aside></section>
+</div>
+    <aside class="postpromonav"><nav><ul itemprop="keywords" class="tags">
+<li><a class="tag p-category" href="../categories/aarch64.html" rel="tag">aarch64</a></li>
+            <li><a class="tag p-category" href="../categories/armasm.html" rel="tag">armasm</a></li>
+            <li><a class="tag p-category" href="../categories/asm.html" rel="tag">asm</a></li>
+            <li><a class="tag p-category" href="../categories/hello-world.html" rel="tag">hello world</a></li>
+            <li><a class="tag p-category" href="../categories/programming.html" rel="tag">programming</a></li>
+        </ul>
+<ul class="pager hidden-print">
+<li class="previous">
+                <a href="baremetal-part-one.html" rel="prev" title="Baremetal Aarch64: Pt 1, Hello World">Предыдущая запись</a>
+            </li>
+            <li class="next">
+                <a href="baremetal-part-three.html" rel="next" title="Baremetal Aarch64: Pt 3, Hello World Ultimate">Следующая запись</a>
+            </li>
+        </ul></nav></aside></article><!--End of body content--><footer id="footer">
+            Contents © 2025         <a href="mailto:whocares0@gmail.com">enn</a> - Powered by         <a href="https://getnikola.com" rel="nofollow">Nikola</a>         
+            
+            
+        </footer>
+</div>
+</div>
+
+
+        <script src="../../assets/js/all-nocdn.js"></script><script>
+    baguetteBox.run('div#content', {
+        ignoreClass: 'islink',
+        captions: function(element){var i=element.getElementsByTagName('img')[0];return i===undefined?'':i.alt;}});
+    </script>
+</body>
+</html>
