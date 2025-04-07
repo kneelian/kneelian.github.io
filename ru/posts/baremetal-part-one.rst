@@ -395,7 +395,7 @@ With this in mind, we start by clearing the control register,
 then setting the transmit mode, enabling the UART,
 clearing all interrupts and disabling FIFO interrupts. Even though
 the PL011 schematics say that, on reset, the value in the control
-register ix ``0x0300`` (p47 of the schematic PDF), we do this
+register is ``0x0300`` (p47 of the schematic PDF), we do this
 for extra safety reasons. Never hurts to be safe. The code we'll
 be running:
 

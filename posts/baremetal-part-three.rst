@@ -117,6 +117,16 @@ This program tests your input whether it's even or odd,
 prints E or O depending on the case, and halts when it
 encounters ``0x40``—that is, ``@``.
 
+To get the input working correctly, I had to pipe it
+to a serial device, and use PuTTY to link to the other side.
+If your input isn't working, it's probably due to that.
+My own experience here is that the code is somehow extremely
+sluggish; there's up to a full second of delay between
+my input and the device's response, and I'm not sure
+if that's a quirk of using virtual COM ports and PuTTY
+to interface with QEMU or a failing of my code. I might
+want to write some sort of device driver for input later
+on to alleviate that and avoid serial TTY, so we'll see.
 
 .. |BroFrustration| image:: ../emoji/brofrustration.png
   :width: 32
