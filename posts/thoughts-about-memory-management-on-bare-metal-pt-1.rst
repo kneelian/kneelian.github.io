@@ -282,7 +282,7 @@ would have to compete with ~16K other keys for its slot in the table.
 The naïve way to resolve this would be to add the top and bottom hanzi together. This is
 awful, because it'll make a lot of small collisions easy: let's say that we name one variable
 女王 ('queen', ``0x5973'738B`` - the sum of the two hanzi is ``0xCCFE``); it will immediately collide
-with 女王 ('princess', ``0x738B'0x5973``). This extends to all anagrams, of which there is
+with 王女 ('princess', ``0x738B'0x5973``). This extends to all anagrams, of which there is
 a large amount in e.g. Japanese (本日 'today' vs. 日本 'Japan' is another neat example). While
 it's tempting to tell the user to Never Ever use anagram variable names, I felt that I needed
 to mitigate this in some way. So, addition is not a good hashing function.
