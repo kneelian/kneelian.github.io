@@ -282,7 +282,7 @@ would have to compete with ~16K other keys for its slot in the table.
 The naïve way to resolve this would be to add the top and bottom hanzi together. This is
 awful, because it'll make a lot of small collisions easy: let's say that we name one variable
 女王 ('queen', ``0x5973'738B`` - the sum of the two hanzi is ``0xCCFE``); it will immediately collide
-with 女王 ('princess', ``0x738B'0x5973``). This extends to all anagrams, of which there is
+with 王女 ('princess', ``0x738B'0x5973``). This extends to all anagrams, of which there is
 a large amount in e.g. Japanese (本日 'today' vs. 日本 'Japan' is another neat example). While
 it's tempting to tell the user to Never Ever use anagram variable names, I felt that I needed
 to mitigate this in some way. So, addition is not a good hashing function.
@@ -537,10 +537,10 @@ on an ESP32 anyway)?
 .. [1] I'm not even exaggerating that much, believe it or not;
 	we have a very good idea of the
 	`historical performance of the computers of the era <http://www.roylongbottom.org.uk/whetstone.htm>`_,
-	with a PDP-11/34 giving 0.204 MWIPS (million Whetstone instructions per second),
+	with a PDP-11/20 giving 0.02 MWIPS (million Whetstone instructions per second),
 	whereas an ESP32 clocked at 240MHz (the default in the CYD) hits
 	`around 50 MWIPS <https://github.com/nopnop2002/esp-idf-benchmark>`_, for
-	around 250x the floating point performance by this crude benchmark comparsion. Given
+	around 2500x the floating point performance by this crude benchmark comparsion. Given
 	how thoroughly the ESP32's floating point unit can suck, the performance gap
 	is probably much, much greater on integer data, which is what
 	most stuff on the CYD would be anyway. My personal benchmarks

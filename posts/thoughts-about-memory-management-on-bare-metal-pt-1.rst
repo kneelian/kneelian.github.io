@@ -537,10 +537,10 @@ on an ESP32 anyway)?
 .. [1] I'm not even exaggerating that much, believe it or not;
 	we have a very good idea of the
 	`historical performance of the computers of the era <http://www.roylongbottom.org.uk/whetstone.htm>`_,
-	with a PDP-11/34 giving 0.204 MWIPS (million Whetstone instructions per second),
+	with a PDP-11/20 giving 0.02 MWIPS (million Whetstone instructions per second),
 	whereas an ESP32 clocked at 240MHz (the default in the CYD) hits
 	`around 50 MWIPS <https://github.com/nopnop2002/esp-idf-benchmark>`_, for
-	around 250x the floating point performance by this crude benchmark comparsion. Given
+	around 2500x the floating point performance by this crude benchmark comparsion. Given
 	how thoroughly the ESP32's floating point unit can suck, the performance gap
 	is probably much, much greater on integer data, which is what
 	most stuff on the CYD would be anyway. My personal benchmarks
