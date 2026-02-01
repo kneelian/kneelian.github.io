@@ -135,6 +135,7 @@ In the boot sequence we'll then add this:
 
 	_skip_rng_fallback:
 
+
 We're overwriting the pointer if the hardwarve feature is
 enabled, since its default value is ``_rng_64_fallback``.
 The hardware RNG is then used like this:
@@ -147,6 +148,7 @@ The hardware RNG is then used like this:
 	 ldr x0, [sp], 8
 	 ret
 
+
 Since we're using the same convention as with other
 functions, branching into the subroutine using the ``bl``
 instruction, returning arguments on the stack, here we read
@@ -156,18 +158,10 @@ and ``ret``.
 
 ----------------------
 
-framebuffer
-
-linker edits
-
-kernel time
-
-and we are gonna set up the framebuffer
-here, allocating it in ram and doing all
-sorts of funny shit
-
-..code-block::
+.. code-block::
+	
 	the memory map is as follows:
+
 		0x40000000        -- QEMU virt ram and kernel start here
 		STK               -- depending on the size of the kernel
 		                     the bottom of the stack can move around
