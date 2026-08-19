@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#5670d4">
 <meta name="generator" content="Nikola (getnikola.com)">
 <link rel="canonical" href="https://example.com/">
-<!--[if lt IE 9]><script src="assets/js/html5.js"></script><![endif]--><link rel="prefetch" href="posts/writing-a-new-backend-for-elvm8cc.html" type="text/html">
+<!--[if lt IE 9]><script src="assets/js/html5.js"></script><![endif]--><link rel="prefetch" href="posts/devblog-0-the-what-and-the-why.html" type="text/html">
 </head>
 <body>
 <a href="#content" class="sr-only sr-only-focusable">Skip to main content</a>
@@ -79,7 +79,658 @@ bg-dark
 
     
 <div class="postindex">
-    <article class="h-entry post-text" itemscope="itemscope" itemtype="http://schema.org/Article"><header><h1 class="p-name entry-title"><a href="posts/writing-a-new-backend-for-elvm8cc.html" class="u-url">Writing a new backend for ELVM/8cc</a></h1>
+    <article class="h-entry post-text" itemscope="itemscope" itemtype="http://schema.org/Article"><header><h1 class="p-name entry-title"><a href="posts/devblog-0-the-what-and-the-why.html" class="u-url">Devblog 0; the "What" and the "Why"</a></h1>
+        <div class="metadata">
+            <p class="byline author vcard"><span class="byline-name fn" itemprop="author">
+                enn
+            </span></p>
+            <p class="dateline">
+            <a href="posts/devblog-0-the-what-and-the-why.html" rel="bookmark">
+            <time class="published dt-published" datetime="2026-08-18T20:54:23+02:00" itemprop="datePublished" title="2026-08-18 20:54">2026-08-18 20:54</time></a>
+            </p>
+        </div>
+    </header><div class="e-content entry-content">
+    <p>This post has been a long time coming, and a long time
+of me not writing it. Inspired by a recent reddit thread I
+participated in on r/gamedev where several users complained
+how they'd want to see more actual developer content,
+I decided to dust my project off and make a short
+write-up. There is no promise of this being a series
+of posts or continuing into the future, but I won't mind
+writing up some things from time to time.</p>
+<p>Most of this is going to be technical babble about the
+environment and some design ideas I had. Little real
+dev work here!</p>
+<section id="the-themes"><h2>The Themes</h2>
+<p>I am not a professional gamedev by any means, so any
+gamedev I do is strictly hobbyist pissing around for
+fun. This means I can afford myself some more leeway
+with what choices I make or what targets I aim for.</p>
+<p>I am a big strategy gamer, or at least used to be.
+I grew up playing <em>WarCraft 3</em> and <em>Command &amp; Conquer: Generals</em>,
+was absolutely bedazzled when <em>Frozen Throne</em> came
+out, and spent years chasing that high. Somewhere around
+2011 I fell into the Paradox rabbithole, and currently
+have 10,833.6 hours of <em>Crusader Kings II</em> logged
+on Steam, and several thousand more outside of it
+through hacked or old versions. <a class="brackets" href="posts/devblog-0-the-what-and-the-why.html#footnote-1" id="footnote-reference-1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p>
+<p>Nowadays, I mostly spin my wheels playing <em>Dwarf Fortress</em>,
+kind of wishing there was a game that would cater to
+my specific narrow interests.</p>
+<p>Over the past couple years, I've been toying with the
+idea of making a strategy game of some kind that
+would do what I wanted it to do. CK2 was <em>good</em>, it hit
+me like crack, but it still missed the mark somewhat.
+I'm really more of a sci-fi guy, and wanted something
+in that direction. Space-based or sci-fi-themed
+4x and grand strategy games never did exactly what
+I wanted them to do: <em>Stellaris</em> was too arcadey and
+casual about some things, and didn't let you have fine-grained
+control over systems or, let alone, planets, and went further
+in that direction the more time passed (I still miss the old
+<em>Stellaris</em> pop systems where each pop would have a physical
+location on the planet map); there was <em>Galactic Civilizations</em>
+that came close, but it was still too far away; Civ-likes
+that were set on single planets just weren't it, either.
+The more-than-excellent <a class="reference external" href="https://store.steampowered.com/app/1194590/Star_Dynasties/">Star Dynasties</a> was the closest
+I got out of the new stuff out there, with its combination
+of a space-based strategy and a dynastic, character-based
+system basically directly aping <em>Crusader Kings</em> (nothing wrong
+with this!), but I didn't like the scale of it: you still
+operated in terms of whole systems at once on a scale
+that wasn't fine-grained enough.</p>
+<p>Unfortunately, the actual number of things that really
+got what I wanted was roughly next to zero, from what
+I could determine. Two games that <em>did</em> scratch the
+unexplainable itch (or rather one game and one mod)
+were the WC3 custom map <em>Solar Conquest</em>, where you
+could individually control units on several different
+planets and fought for control over each individual planet
+with the ability to have partial control over things,
+and the now ancient game <a class="reference external" href="https://store.steampowered.com/app/2799350/Emperor_of_the_Fading_Suns_Enhanced/">Emperor of the Fading Suns</a>
+which involves dynastic conflict over individual planets
+under a vacant interstellar throne.</p>
+<p>Given that I now guessed that there would be nothing
+to go into that niche (and I doubt that there's a
+high enough demand to make someone fill it for me),
+I figured I might want to do some development myself,
+knowing full well I'm not likely to release anything
+any time soon, or ever.</p>
+<p>My 'ideal' game, in this case, would be a space-based
+grand strategy game with a dynastic character focus,
+primarily or even exclusively dealing with humans and
+human factors, with things like sub-system and sub-planet
+granularity of control and a feudal system of interdependencies
+between characters themselves, and between characters
+and titles. Space feudalism, really. How has this never
+been done!?</p>
+<p>The game will be 2D, since I just like how maps work in
+2D (I even turned off the 3D terrain mode in EU5, I
+really don't care for the look of it). I will probably
+make it turn-based, for one reason or another (mostly
+because turn-based games are more intuitive to me and
+will be easier to develop) <a class="citation-reference" href="posts/devblog-0-the-what-and-the-why.html#p" id="citation-reference-1" role="doc-biblioref">[P]</a></p>
+<p>It's not really that well-developed in sci-fi literature
+either, for one reason or another. Sure, there's <em>Dune</em>, but
+even then you get less focus on the diplomacy
+inherent in feudalism. It's very rare to really stumble
+across a piece of media doing what's basically
+<em>A Song of Ice and Fire</em> in space! But I want to try
+and tackle the problem, even if it doesn't result in me
+changing that.</p>
+</section><section id="the-target"><h2>The Target</h2>
+<p>Given that I'm not really limited by commercialisation
+of my ideas, I could play around with arbitrary tech
+and target whatever I wanted. Given that I picked up
+a total shitbox (in today's terms) from a local university
+getting rid of its tech, I figured why not target that?</p>
+<p>The target for my game was going to be, at least for
+the time being, a machine with the following specs:</p>
+<table>
+<thead><tr>
+<th class="head"><p>↓ thing</p></th>
+<th class="head"><p>­←­-­→</p></th>
+<th class="head"><p>spec ↓</p></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><ul class="simple">
+<li><p>CPU</p></li>
+</ul></td>
+<td></td>
+<td><ul class="simple">
+<li><p>Pentium III @ 866MHz</p></li>
+</ul></td>
+</tr>
+<tr>
+<td><ul class="simple">
+<li><p>RAM</p></li>
+</ul></td>
+<td></td>
+<td><ul class="simple">
+<li><p>256MB DDR1</p></li>
+</ul></td>
+</tr>
+<tr>
+<td><ul class="simple">
+<li><p>GPU</p></li>
+</ul></td>
+<td></td>
+<td><ul class="simple">
+<li><p>nVidia GeForce2 MX</p></li>
+</ul></td>
+</tr>
+<tr>
+<td><ul class="simple">
+<li><p>OS</p></li>
+</ul></td>
+<td></td>
+<td><ul class="simple">
+<li><p>Windows 98 SE</p></li>
+</ul></td>
+</tr>
+</tbody>
+</table>
+<p>We really are cooking with some exotic
+computation gear, aren't we!</p>
+<p>Beyond that, I also, for some reason, decided
+I wanted to eventually distribute this game on
+floppy disks, optimally just one at a time, so
+that I could distribute it to my friends and
+go haha guys look how cool this is! You can play
+my stupid retro game off a stupid floppy disk!
+This means that I'll have to make sure that my
+entire game with all its assets fits into
+somewhat under 1440KB. <a class="brackets" href="posts/devblog-0-the-what-and-the-why.html#footnote-2" id="footnote-reference-2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p>
+<p>Given that the system is running Win98, it is
+also realistically possible to target MS-DOS
+on it, given that Win98 is a DOS-based system.
+This simplifies the programming part a lot,
+surprisingly, as there are a lot of high-quality
+libraries and tools targeting DOS that simply
+don't have a match on the Win95/98 side of
+things. This also means that I
+will not have to do much to test my game, as now
+I can run it just fine locally on DOSBox and
+expect it to run on hardware as well (and the
+inverse direction doesn't need to apply).</p>
+<p>The GPU this system has isn't that strong, but
+we're not doing 3D graphics anyway, and just need
+it to push pixels to the screen. I'm rendering
+a 1024x768 screen (how huge!) at 16 bits
+per pixel, which the GeForce2 MX takes like
+a champ and doesn't stutter a lot. I also don't
+want to make a 3D game, and not even just
+because we're on MS-DOS: I think a proper
+strategy game or wargame can work very well
+in a 2D scheme, and gains nothing much from
+going 3D. We'll be doing tiles from a tileset,
+for this reason.</p>
+<p>This set of restrictions feels properly absurd
+for today, but I've found it really somewhat
+manageable, and limitations do after all breed
+innovation.</p>
+</section><section id="the-tools"><h2>The Tools</h2>
+<p>My primary deployment/testing platform is
+DOSBox-X, which I use to test my builds.
+It's a really decent DOS emulator that aims
+for maximal hardware compatibility and tries
+to make sure it can run a wide array of
+general-purpose DOS applications and not just
+games like several other DOSBox forks. It's
+stable, and it just so happens to emulate
+the exact damn processor my shitbox has,
+the Pentium III, down to the 866MHz clock.
+In retrospect, this was a very good pick,
+though at first I worried whether I could
+actually expect matching behaviour. The answer
+is a solid and resounding <strong>yes</strong>: everything
+I've run so far on DOSBox-X has run identically
+on the shitbox, down to the segfault traces
+being genuinely byte identical. Isn't emulation
+neat!</p>
+<p>Now, I'm a C++ freak. The hammer I wield is C++,
+and everything looks like a nail. It's my
+go-to for scripting, it's my go-to for
+a Discord bot, it's what I use to solve
+anything that needs computation done. Thankfully,
+doing C++ on MS-DOS is genuinely easy
+and not even disgusting to think about.
+For this project, I naturally
+said <em>hey, what if I did this in C++</em>, and
+unexpectedly the DOS dev ecosystem has been
+pretty clean to work with. I am compiling
+code for a 32-bit MS-DOS target using
+a toolchain built off DJ Delorie's <a class="brackets" href="posts/devblog-0-the-what-and-the-why.html#footnote-3" id="footnote-reference-3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a>
+DJGPP, containing GCC 15.2 with C++ support.
+This means that, yes, structured bindings
+and lambdas Just Work™ on MS-DOS targets,
+and that the MS-DOS has a newer compiler
+than my actual main machine running Linux Mint 22.3.</p>
+<p>DJGPP includes Charles W. Sandmann's DOS extender
+<code class="docutils literal">CWSDPMI</code>, which provides the system with
+virtual memory management and the ability to
+seamlessly run protected mode code on a real
+mode OS (such as MS-DOS is, or such as
+Win98 pretends to be). Memory protection,
+as annoying as it can be, is not a <em>bad</em> thing,
+and segfaulting on MS-DOS because you touched
+a nono array or did a double-free is great
+for debugging. <a class="brackets" href="posts/devblog-0-the-what-and-the-why.html#footnote-4" id="footnote-reference-4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a></p>
+<p>DJGPP also includes a few more useful treats:</p>
+<ul class="simple">
+<li><p>a port of <code class="docutils literal">gdb</code> for MS-DOS, running
+natively on the system (this is excellent)</p></li>
+<li><p>dynamic linker system (<code class="docutils literal">dxegen</code> and
+the associated <code class="docutils literal">dxe3res</code>)</p></li>
+<li><p>whole bunch of headers for useful
+operations (<code class="docutils literal">file.h</code> and even a
+relatively performant <code class="docutils literal">regex.h</code>)</p></li>
+</ul>
+<p>It's a surprisingly robust system, and has been
+around for longer than I have. Did you know that
+DJGPP was what was used to compile <code class="docutils literal">Quake</code> back
+in the day!?</p>
+<p>Another good thing that DJGPP provides us with
+is the ability to have both a natively-running
+C/C++ compiler on the MS-DOS itself <a class="brackets" href="posts/devblog-0-the-what-and-the-why.html#footnote-5" id="footnote-reference-5" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a> and
+one that works on a modern 64-bit host. Cross-compiling
+for the MS-DOS is much, much, <em>muuuuch</em> faster than
+doing it natively (something on the order of
+50x faster is what I've measured), and it
+enables me to do a modern type of incremental
+build, and also just edit while another thread is
+compiling the game. Lots of stuff you can do!</p>
+<p>Finally, a very good cherry on top is that
+inline assembly and whole-cloth ASM subroutines
+can get integrated really easily into the codebase
+without much fanfare; I can just point the
+compiler at an <code class="docutils literal">.s</code> file and it magically gets
+handled just the way I want it :) <a class="brackets" href="posts/devblog-0-the-what-and-the-why.html#footnote-6" id="footnote-reference-6" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a></p>
+<p>For the rest of the tech, I went with a
+trustworthy old friend: the game library
+Allegro, with one of the later versions
+(but not the very last one) of Allegro 4
+still maintaining DOS support. This basically
+pushed most of the concerns out of my way,
+since Allegro would handle video mode
+toggling, input support (mouse and keyboard),
+timer interrupts (crucial for building an
+animation), and had support for a number
+of useful file formats like the <code class="docutils literal">.pcx</code>
+image format. Allegro also provides good
+support for 16-bit colour <a class="brackets" href="posts/devblog-0-the-what-and-the-why.html#footnote-7" id="footnote-reference-7" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a> and even has
+hand-tuned assembly functions for drawing a
+large number of things (lines, circles, pixels)
+adjusted for 16-bpp colour mode. Allegro also
+has excellent compatibility with DJGPP.</p>
+<p>Given that we're linking a large library such
+as Allegro into the final game executable,
+binary size is understandably a bit awful.
+The <code class="docutils literal">liballeg.a</code> object is by itself 1495KB,
+which is already above what we can afford;
+aggressive LTO does handle this pretty well,
+but the resulting executable still ends up
+hovering at around 1.1MB, dangerously close
+to the limit, even when compiling with <code class="docutils literal"><span class="pre">-Os</span></code>
+and stripping as much as possible.
+This isn't a new problem, and developers of the
+time also encountered it frequently: the natural
+solution is to do what they did, and use
+an executable packer. Packers are programs that
+take an executable program, compress the majority
+of the code with some algorithm, and replace the
+entry point with a decompressor stub that would
+reconstruct external imports and decompress
+the packed executable and jump into it. Packers
+of yesteryear weren't quite as sophisticated as
+what we have today, but <code class="docutils literal">upx</code> is pretty fresh,
+<em>very</em> good, and (most importantly) can work
+on MS-DOS executables of various formats, including
+the .EXEs that DJGPP produces. It claims to
+give up to 50% reduction in most cases;
+currently, I'm going from 1127KB to 321KB,
+which is ~28.5% of the initial size.</p>
+<section id="digression-microsoft-executables-and-djgpp"><h3>Digression: Microsoft executables and DJGPP</h3>
+<p>This digression started as a footnote but it grew
+way too large to be a footnote (maybe a legnote?).
+The DJGPP output format is a bit of a nasty
+beast from our modern point of view.</p>
+<p>For a bit of history,
+there are actually approximately <a class="brackets" href="posts/devblog-0-the-what-and-the-why.html#footnote-8" id="footnote-reference-8" role="doc-noteref"><span class="fn-bracket">[</span>8<span class="fn-bracket">]</span></a> three types of <code class="docutils literal">.EXE</code>
+files in the history of Microsoft. The first executable
+format on the MS-DOS was the <code class="docutils literal">.COM</code> file, which was an
+image copy of a single 64K segment of memory with a fixed
+(kind of) entry point at <code class="docutils literal">0x0100</code> where DOS would load the
+image and jump into it. This meant that <code class="docutils literal">.COM</code> could
+be up to <code class="docutils literal">0xff00</code> bytes long (since it must fit into a
+single memory segment), which limited it a whole lot,
+and had no relocation info. Microsoft's answer to these
+limitations was the MZ <code class="docutils literal">.EXE</code>, named after Mark
+Żbikowśki, one of the devs on MS-DOS and one of the
+format's architects. This MZ executable included some
+relocation info and allowed executables to span more
+than a single segment. In fact, MZ <code class="docutils literal">.EXE</code> is the ancestor
+of all its successors, which is why every Windows executable
+you can run today will have <code class="docutils literal">0x4d5a</code> (ASCII of "MZ") as
+the magic number in the header.</p>
+<p>In any case, the MZ format was decent for MS-DOS,
+but graphical Windowses
+ended up needing more cruft :) and so Microsoft produced
+the now-ancient <em>New Executable</em> which was designed
+to run on 16-bit OSes, including later versions of MS-DOS,
+but in a 32-bit memory environment. When they made Windows
+NT, they also came up with the <em>Portable Executable</em>, which
+was designed to be started in protected mode on 32-bit OSes
+and never dip into real or fakereal, but still include a
+DOS stub that prints the legendary "This program cannot be
+run in DOS mode" (and which can be replaced with an actual
+DOS program, resulting in a fat binary!). DJGPP, being a
+DOS-native toolchain, can't rely on newer executables, so
+the programs it produces are, technically, presented as
+MZ <code class="docutils literal">.EXE</code> files.</p>
+<p>The differences start here.</p>
+<p>A now mostly historical object file format of the past
+forms the basis of both the DJGPP executable and the
+modern Windows PE. The COFF (common object file format)
+object file started on Unix as an attempt at developing
+a new format to replace older limited executables (much
+like how the MZ <code class="docutils literal">.EXE</code> was made to replace <code class="docutils literal">.COM</code> with
+its limits), but was itself quickly replaced by ELF because
+it was heavily underspecified (basically every compiler
+and linker vendor produced their own microvariants of
+COFF files that were mutually incompatible). A variant
+of the COFF forms the core of the DJGPP executable. The
+toolchain actually generates a MZ <code class="docutils literal">.EXE</code> stub that the
+OS loads the proper way, but it includes a COFF payload
+that forms the meat of the program.</p>
+<p>The way that a DJGPP <code class="docutils literal">.EXE</code> works is that the 16-bit
+stub allocates memory for a transfer buffer (section of
+memory where the program talks with the DOS host,
+located somewhere in 'conventional memory' (the low
+640KB of physical RAM)), then tries to set up DPMI
+services (first by probing for whether it is already
+under DPMI, and if it isn't then trying to load
+<code class="docutils literal">CWSDPMI</code> either from the current directory or from
+the system path), reads the COFF header to see how
+much memory it will need, enters protected mode,
+loads the executable from the COFF into virtual
+memory, allocates selectors for conventional
+memory access (for buffers that don't need to touch
+the transfer buffer, or for whatever other use that
+a DOS program might need conventional memory access
+really), sets up <code class="docutils literal">sbrk</code>, brings up the stack (giving
+you a default of 512K of stack space), hooks signal
+and interrupt handlers, sets up the program environment,
+passes the commandline arguments, constructs any object
+with static storage, and then calls the program's
+<code class="docutils literal">main()</code> from the COFF object.</p>
+<p>I assume that because COFF is well-known, and MZ
+executables aren't that awful to deal with, that <code class="docutils literal">upx</code>
+has decent results tackling the DJGPP executable.</p>
+</section><section id="space-saving-strategies"><h3>Space-saving strategies</h3>
+<p>Whenever you Do Development, you basically just play
+many small games of tradeoffs. The main triangle I
+had to consider here was the tradeoff between performance,
+memory and disk use.</p>
+<p>With the shitbox being the shitbox it was, I expected
+that performance would be a pretty big bottleneck. It
+wasn't. Other than a few times where I was really stupid
+(such as calling a complex function on one pixel, for every
+pixel of the framebuffer, for every frame), I haven't really
+hit any big performance rough spots. The chip is fairly
+good, really; you have access to fast 32-bit floating point
+operations with SSE (no hitting the awful slow FPU), to
+name one thing. I do expect to eventually also just have to
+do some weird optimisations down the line <a class="brackets" href="posts/devblog-0-the-what-and-the-why.html#footnote-9" id="footnote-reference-9" role="doc-noteref"><span class="fn-bracket">[</span>9<span class="fn-bracket">]</span></a> when I start
+hitting a performance limit, but for now we're doing just
+dandy in that regard.</p>
+<p>I <em>didn't</em> expect to have memory issues. While 256M is
+dreadfully small for today's standards, it's positively
+monstrous for the MS-DOS. I can basically almost do whatever
+I want, though I'll try to keep my memory use within
+64MB if I can. I'm so far away from hitting that limit right
+now that I can't really imagine how approaching it would even
+look like.</p>
+<p>That, naturally, leaves disk. Like I mentioned before, aiming
+to hit 1.3MB of disk is already making me do things I've never
+had to do on a 'modern' system.</p>
+<p>One thing that's been fun has been learning about various
+file formats, compression and decompression methods etc.
+Even though I said the CPU is pretty beefy, I still have
+to keep in mind it's a single-core 32-bit chip under a
+gigahertz, so I can't really do some of the sillier stuff
+I've done even on a Raspi today. Still, my first default
+image format, and the one that Allegro supported out
+of the box and was handled just fine by Aseprite, was the
+<code class="docutils literal">.pcx</code>, which is only very slightly compressed (but
+decompresses really easily), and my first big space-saving
+operation was to include a <code class="docutils literal">.png</code> decoder (for 17KB of
+unpacked executable size, I am saving ~50% on my images).
+When I include text-based configs, I will also look
+into LZSS since it's not computationally
+very expensive, which I know since I'm already doing
+the related LZ77 in the <code class="docutils literal">.png</code> decoder and afaik in <code class="docutils literal">upx</code>
+itself, and since Allegro provides built-in support
+for a LZSS unpacker.</p>
+<p>Really, spending some time loading and decompressing
+or unpacking assets ahead of play is basically free,
+and was a beloved tool of many a dev until people
+started shipping gigabyte textures <img alt="FatHusky" src="emoji/fat-husky.webp" width="32"> but
+that's a topic for a different post, innit.</p>
+<p>I still haven't gotten to the audio, but I expect
+that I'll ship some small mod playback library
+(say, <code class="docutils literal">libopenmpt</code> to play tracker music) to
+avoid having to ship actual audio files whenever
+I can. Given also the limitations of the FAT12
+filesystem, I'll want to avoid making many small files
+(which would fill up the root directory if in the
+top level directory, or would take up additional space
+if in a subdirectory), and would perhaps want to bundle
+all my assets in one large file which I could compress
+and decompress (hello, reinvention of the tarball),
+and which would ease loading. Allegro also already
+provides this in the form of the <a class="reference external" href="https://liballeg.org/stabledocs/en/alleg031.html">datafile</a> with
+a pretty robust interface and set of manipulation
+functions.</p>
+</section></section><section id="development-process"><h2>Development process</h2>
+<p>Honestly, I expected development to be much more
+painful than it really is.</p>
+<p>My actual tech stack is, including some of the
+pieces I mentioned above, the following:</p>
+<ul class="simple">
+<li><p>DJGPP toolchain
+- GCC, G++ 15.2 running on a 64-bit Linux host
+- native <code class="docutils literal">gdb</code> running on MS-DOS host</p></li>
+<li><p><code class="docutils literal">upx</code> packer</p></li>
+<li><p><code class="docutils literal">stb_img</code> for format support</p></li>
+<li><p><code class="docutils literal">make</code> to call compiler and packer</p></li>
+<li><p>Aseprite for graphics</p></li>
+<li><p>VS Code as the IDE (I like having popups telling me what a function wants)</p></li>
+<li><p>DOSBox-X for testing</p></li>
+</ul></section><section id="how-does-the-code-look"><h2>How does the code look?</h2>
+<p>Like honest to God normal C++ code.
+If you don't believe me, just take a
+look at this:</p>
+<div class="code"><pre class="code c++"><a id="rest_code_d0863841af2b4355a6317fc08773aa20-1" name="rest_code_d0863841af2b4355a6317fc08773aa20-1" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">planet_t::update_minimap</span><span class="p">()</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-2" name="rest_code_d0863841af2b4355a6317fc08773aa20-2" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-2"></a><span class="p">{</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-3" name="rest_code_d0863841af2b4355a6317fc08773aa20-3" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-3"></a><span class="w">    </span><span class="k">if</span><span class="p">(</span><span class="n">minimap</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="k">nullptr</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-4" name="rest_code_d0863841af2b4355a6317fc08773aa20-4" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-4"></a><span class="w">    </span><span class="n">clear_bitmap</span><span class="p">(</span><span class="n">minimap</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-5" name="rest_code_d0863841af2b4355a6317fc08773aa20-5" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-5"></a><span class="w">    </span><span class="k">for</span><span class="p">(</span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">PLANET_ROWS</span><span class="p">;</span><span class="w"> </span><span class="n">j</span><span class="o">++</span><span class="p">)</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-6" name="rest_code_d0863841af2b4355a6317fc08773aa20-6" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-6"></a><span class="w">        </span><span class="k">for</span><span class="p">(</span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">PLANET_COLS</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-7" name="rest_code_d0863841af2b4355a6317fc08773aa20-7" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-7"></a><span class="w">        </span><span class="p">{</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-8" name="rest_code_d0863841af2b4355a6317fc08773aa20-8" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-8"></a><span class="w">            </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">colour</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-9" name="rest_code_d0863841af2b4355a6317fc08773aa20-9" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-9"></a><span class="w">            </span><span class="k">switch</span><span class="p">(</span><span class="n">map</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="p">].</span><span class="n">tileid</span><span class="p">)</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-10" name="rest_code_d0863841af2b4355a6317fc08773aa20-10" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-10"></a><span class="w">            </span><span class="p">{</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-11" name="rest_code_d0863841af2b4355a6317fc08773aa20-11" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-11"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">EMTY</span><span class="p">,</span><span class="w"> </span><span class="n">EMTYCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-12" name="rest_code_d0863841af2b4355a6317fc08773aa20-12" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-12"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">WATR</span><span class="p">,</span><span class="w"> </span><span class="n">WATRCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-13" name="rest_code_d0863841af2b4355a6317fc08773aa20-13" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-13"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">GRAS</span><span class="p">,</span><span class="w"> </span><span class="n">GRASCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-14" name="rest_code_d0863841af2b4355a6317fc08773aa20-14" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-14"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">SVNA</span><span class="p">,</span><span class="w"> </span><span class="n">SVNACOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-15" name="rest_code_d0863841af2b4355a6317fc08773aa20-15" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-15"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">DEEP</span><span class="p">,</span><span class="w"> </span><span class="n">DEEPCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-16" name="rest_code_d0863841af2b4355a6317fc08773aa20-16" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-16"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">SNOW</span><span class="p">,</span><span class="w"> </span><span class="n">SNOWCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-17" name="rest_code_d0863841af2b4355a6317fc08773aa20-17" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-17"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">MEAT</span><span class="p">,</span><span class="w"> </span><span class="n">MEATCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-18" name="rest_code_d0863841af2b4355a6317fc08773aa20-18" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-18"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">SAND</span><span class="p">,</span><span class="w"> </span><span class="n">SANDCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-19" name="rest_code_d0863841af2b4355a6317fc08773aa20-19" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-19"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">VOID</span><span class="p">,</span><span class="w"> </span><span class="n">VOIDCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-20" name="rest_code_d0863841af2b4355a6317fc08773aa20-20" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-20"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">TOP1</span><span class="p">,</span><span class="w"> </span><span class="n">TOP1COL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-21" name="rest_code_d0863841af2b4355a6317fc08773aa20-21" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-21"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">TOP2</span><span class="p">,</span><span class="w"> </span><span class="n">TOP2COL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-22" name="rest_code_d0863841af2b4355a6317fc08773aa20-22" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-22"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">ROCK</span><span class="p">,</span><span class="w"> </span><span class="n">ROCKCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-23" name="rest_code_d0863841af2b4355a6317fc08773aa20-23" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-23"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">MNTN</span><span class="p">,</span><span class="w"> </span><span class="n">MNTNCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-24" name="rest_code_d0863841af2b4355a6317fc08773aa20-24" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-24"></a><span class="w">                </span><span class="n">_CASE</span><span class="p">(</span><span class="n">SWMP</span><span class="p">,</span><span class="w"> </span><span class="n">SWMPCOL</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-25" name="rest_code_d0863841af2b4355a6317fc08773aa20-25" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-25"></a>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-26" name="rest_code_d0863841af2b4355a6317fc08773aa20-26" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-26"></a><span class="w">                </span><span class="k">default</span><span class="o">:</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-27" name="rest_code_d0863841af2b4355a6317fc08773aa20-27" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-27"></a><span class="w">                    </span><span class="n">colour</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">makecol16</span><span class="p">(</span><span class="mh">0xff</span><span class="p">,</span><span class="w"> </span><span class="mh">0x00</span><span class="p">,</span><span class="w"> </span><span class="mh">0x00</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-28" name="rest_code_d0863841af2b4355a6317fc08773aa20-28" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-28"></a><span class="w">                    </span><span class="k">break</span><span class="p">;</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-29" name="rest_code_d0863841af2b4355a6317fc08773aa20-29" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-29"></a><span class="w">            </span><span class="p">}</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-30" name="rest_code_d0863841af2b4355a6317fc08773aa20-30" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-30"></a><span class="w">            </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-31" name="rest_code_d0863841af2b4355a6317fc08773aa20-31" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-31"></a><span class="w">            </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">j</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-32" name="rest_code_d0863841af2b4355a6317fc08773aa20-32" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-32"></a><span class="w">            </span><span class="k">if</span><span class="p">((</span><span class="n">j</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-33" name="rest_code_d0863841af2b4355a6317fc08773aa20-33" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-33"></a><span class="w">            </span><span class="n">rectfill</span><span class="p">(</span><span class="n">minimap</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="n">colour</span><span class="p">);</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-34" name="rest_code_d0863841af2b4355a6317fc08773aa20-34" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-34"></a><span class="w">        </span><span class="p">}</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-35" name="rest_code_d0863841af2b4355a6317fc08773aa20-35" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-35"></a><span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<a id="rest_code_d0863841af2b4355a6317fc08773aa20-36" name="rest_code_d0863841af2b4355a6317fc08773aa20-36" href="posts/devblog-0-the-what-and-the-why.html#rest_code_d0863841af2b4355a6317fc08773aa20-36"></a><span class="p">}</span>
+</pre></div>
+<p>You can just do regular idiomatic C++, there's not a
+lot of gotchas. You <em>don't</em> have everything you would
+want on a modern system, so things like multithreading
+aren't in by default (though there exist POSIX thread
+library ports to DJGPP if you want them for some
+reason), but most things work just fine. Structured
+bindings are in, various deductions work fine,
+constructors and destructors are okay, exceptions
+work without much of a fuss, etc. With the toolchain
+it's less inconvenient to do dev for DOS than it is
+for Windows it feels like.</p>
+</section><section id="what-s-next"><h2>What's next?</h2>
+<p>Now, I'm actually a bit along the project, though it's
+still in the early stages; I work on it whenever I'm
+feeling particularly bored and there's nothing else to
+distract me. As I'm loading some configurations from disk,
+such as the terrain layouts of planets which are constructed
+from a bitmap/tilemap stored in the assets folder,
+I've also made some devtools to help me visualise these and
+work on them 'in-engine', like a micro level editor. I'll
+probably expand these into a bundle of more proper editing
+tools that I'll distribute to the end users, to allow them
+to make their own planets and maybe even events (if somewhen
+in the far future I get to making an event or scripting
+system...)</p>
+<p>Currently, I have basic screen rendering done,
+tile mouseover detection is there (it's a bit messy
+figuring out which tile your mouse is over, actually),
+a minimap system is there, as is scrolling the planet map.
+Planets are for now cylindrical: they wrap around going east
+to west, but are capped off at the poles, and all latitudinal
+parallels are of equal length. I don't think I'll actually
+approach making a realistically <em>spherical</em> planet; spheres
+translate poorly to maps, and I'm a big fan primarily of maps.</p>
+<p>If I come back to this devblog series,
+I'll be writing first about how I built the animation
+system, how I handled hex coordinates and printing
+hex tiles, etc. and show some actual screens of the game.
+They're still horrible.</p>
+<hr class="docutils">
+<aside class="footnote-list brackets"><aside class="footnote brackets" id="footnote-1" role="doc-footnote"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#footnote-reference-1">1</a><span class="fn-bracket">]</span></span>
+<p>This adds up to &gt;450 whole days.
+That sounds absolutely devastating, but really
+it's not <em>that</em> much spread out over more than
+a decade. I still remember the 2012 patches by
+version number!</p>
+</aside><aside class="footnote brackets" id="footnote-2" role="doc-footnote"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#footnote-reference-2">2</a><span class="fn-bracket">]</span></span>
+<p>A standard 1440K floppy has 2880 sectors of
+512 bytes, and tends to be formatted as a FAT12
+drive. Not all of these are actually usable, as
+the first sector is reserved for drive metadata
+and possible boot code (hence the name boot sector),
+and then there are two file allocation tables (the
+thing that gives FAT12 its name) of 9 sectors each,
+eating up another 18 sectors. The root directory (i.e.
+the directory you see when you open the drive) is treated
+specially and reserves another 14 sectors, which is
+enough to hold 224 files or folders in root (each
+file and folder has 32 bytes of bookkeeping associated
+with it, with 8-character filenames). This leaves 2847 sectors
+for storing data and subfolders, which means
+that ~1420KB of a floppy is realistically usable.
+The driver operates in terms of clusters, and the filesystem
+also references these clusters. These are sectors in the
+"data section" (starting from the first sector after
+the root directory) numbered starting from 0x002.
+A FAT12 drive can maximally index up to 4078 clusters
+as each cluster is identified by three hex digits or
+a 12-bit number, and clusters {0x000, 0x001, 0xff0–0xfff}
+are considered special markers and do not
+refer to physical sectors. Every file on a FAT12 system
+must take up a multiple of 512 bytes on the drive, rounding
+up to the sector boundary: a file that's one byte long
+takes up the same amount of space as a 512-byte file, but
+a 513-byte file now takes up 1KB and has two entries in
+the file table.</p>
+</aside><aside class="footnote brackets" id="footnote-3" role="doc-footnote"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#footnote-reference-3">3</a><span class="fn-bracket">]</span></span>
+<p>That's the guy's name! No periods, no abbreviations.
+He genuinely is named DJ.</p>
+</aside><aside class="footnote brackets" id="footnote-4" role="doc-footnote"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#footnote-reference-4">4</a><span class="fn-bracket">]</span></span>
+<p>While DJGPP does come with <code class="docutils literal">CWSDPMI</code>,
+other DPMIs can be used just
+fine with it as long as they provide the same
+standardised interface.</p>
+</aside><aside class="footnote brackets" id="footnote-5" role="doc-footnote"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#footnote-reference-5">5</a><span class="fn-bracket">]</span></span>
+<p>Since DJGPP GCC can compile C and C++, it can also
+compile itself just fine, and then the resulting compiler
+runs on MS-DOS. I am thinking of maybe using this in the
+future to enable modders to inject code into the game
+directly in some way, by giving them a process that would
+compile custom code into a DXE and loading it at startup.
+Yes, yes, I know, safety, code injection, etc; but, come
+on, it's running on DOS, basically nobody's storing anything
+sensitive on an MS-DOS anymore, and those that are shouldn't
+be gaming on that machine.</p>
+</aside><aside class="footnote brackets" id="footnote-6" role="doc-footnote"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#footnote-reference-6">6</a><span class="fn-bracket">]</span></span>
+<p>There are other projects offering relatively
+modern environments (shout out to DOjs and
+LoveDOS), but I wanted to use my hammer.</p>
+</aside><aside class="footnote brackets" id="footnote-7" role="doc-footnote"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#footnote-reference-7">7</a><span class="fn-bracket">]</span></span>
+<p>Once known as "high colour", i.e.
+65K colour, with 5 bits for red, 6 for
+green and 5 for blue. We have mostly replaced
+656 colour with 888 RGB (sometimes called
+"true"), but this was a period where 656 still
+held good sway, and it's currently still present
+in a lot of embedded devices and low-level graphics
+(like the Raspberry Pi 4 default kernel framebuffer).</p>
+</aside><aside class="footnote brackets" id="footnote-8" role="doc-footnote"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#footnote-reference-8">8</a><span class="fn-bracket">]</span></span>
+<p>There's a few more than the ones mentioned in
+that section. Aside from MZ, NE and PE executables,
+Microsoft also introduced some compatibility for
+executable formats used on the OS/2, of which the
+<em>linear executable</em>/LX is the most notable and was
+used for VxD drivers in Windows 3.11, 95 and 98,
+and then some minor LX-derived formats. None of
+these are particularly interesting to us.</p>
+</aside><aside class="footnote brackets" id="footnote-9" role="doc-footnote"><span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#footnote-reference-9">9</a><span class="fn-bracket">]</span></span>
+<p>Specifically, I'm thinking of laying out some
+data in a pseudo-ECS fashion and working it with SIMD
+extensions (be it MMX or SSE) in strides. I suspect
+the fact that the data will be cache-friendly
+will add to the gain extractable from SIMD. I'm not
+at that stage yet, but it gets me giddy when I think
+about manually writing MMX code in 2026.</p>
+</aside></aside><div role="list" class="citation-list">
+<div class="citation" id="p" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="posts/devblog-0-the-what-and-the-why.html#citation-reference-1">P</a><span class="fn-bracket">]</span></span>
+<p>Keep in mind that Paradox games are actually all
+turn-based, just with very fast turns with auto-advancement.
+Each day or hour or whatever is in reality, mechanically, a
+turn, and things resolve at turn boundaries. It's very
+neatly presented in a way that feels like the games are
+real-time, since the intervals the turns represent are
+really just sufficiently small that it doesn't feel like
+each is individually a big deal compared to, say, what
+Civ-like or <em>Total War</em> games do with year-like turns.</p>
+</div>
+</div>
+</section>
+</div>
+    </article><article class="h-entry post-text" itemscope="itemscope" itemtype="http://schema.org/Article"><header><h1 class="p-name entry-title"><a href="posts/writing-a-new-backend-for-elvm8cc.html" class="u-url">Writing a new backend for ELVM/8cc</a></h1>
         <div class="metadata">
             <p class="byline author vcard"><span class="byline-name fn" itemprop="author">
                 enn
